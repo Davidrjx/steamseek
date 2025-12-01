@@ -45,7 +45,8 @@ def auth_google():
     client_id = os.environ.get('GOOGLE_CLIENT_ID')
     
     # Always use localhost, not 127.0.0.1, to match Google OAuth settings
-    redirect_uri = "http://localhost:5000/auth/google/callback"
+    #(old style)# redirect_uri = "http://localhost:5000/auth/google/callback"
+    redirect_uri = url_for('auth.auth_callback', _external=True)
     
     # Build the Google OAuth URL
     auth_url = (
@@ -85,7 +86,9 @@ def auth_callback():
         # Exchange the code for tokens
         client_id = os.environ.get('GOOGLE_CLIENT_ID')
         client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-        redirect_uri = "http://localhost:5000/auth/google/callback"
+        #(old style)# redirect_uri = "http://localhost:5000/auth/google/callback"
+        # adaptive redirect_uri based on request host
+        redirect_uri = url_for('auth.auth_callback', _external=True)
         
         token_url = "https://oauth2.googleapis.com/token"
         token_payload = {

@@ -736,7 +736,8 @@ def auth_google():
     
     # IMPORTANT: Always use localhost, not 127.0.0.1, to match Google OAuth settings
     # Even if the user is accessing via 127.0.0.1, we need to use localhost in the redirect
-    redirect_uri = "http://localhost:5000/auth/google/callback"
+    #(old style)# redirect_uri = "http://localhost:5000/auth/google/callback"
+    redirect_uri = url_for('auth_google_callback', _external=True)
     
     # Print detailed debug information
     print("\n=== GOOGLE AUTH DEBUG INFO ===")
@@ -855,7 +856,8 @@ def exchange_code_for_token(code):
         
         # IMPORTANT: Always use localhost, not 127.0.0.1, to match Google OAuth settings
         # The redirect_uri must match exactly what we sent in the auth request
-        redirect_uri = "http://localhost:5000/auth/google/callback"
+        #(old style)# redirect_uri = "http://localhost:5000/auth/google/callback"
+        redirect_uri = url_for('auth_google_callback', _external=True)
         
         # Print debug information
         print("\n=== TOKEN EXCHANGE DEBUG INFO ===")
