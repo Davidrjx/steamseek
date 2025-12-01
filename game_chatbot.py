@@ -5,6 +5,7 @@ import time
 from typing import List, Dict, Any
 from pinecone import Pinecone, ServerlessSpec
 import openai
+import requests
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
@@ -15,6 +16,7 @@ logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s [%(levelname)s] 
 load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Use OpenAI's official API key
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")  # Use OpenRouter as fallback
 
 # Configure file paths
 EMBEDDINGS_FILE = "embeddings.jsonl"  # Your embeddings file in root folder
@@ -22,6 +24,9 @@ UPLOAD_CHECKPOINT_FILE = "pinecone_upload_complete.txt"  # To track if upload is
 
 # Set OpenAI API key for official embedding endpoint
 openai.api_key = OPENAI_API_KEY
+
+# Check which API to use based on availability
+USE_OPENROUTER = not OPENAI_API_KEY or len(OPENAI_API_KEY.strip()) == 0
 
 class GameKnowledgeBase:
     def __init__(self, index_name: str = "game-knowledge"):
@@ -213,22 +218,78 @@ class GameChatbot:
         logging.info("Initializing GameChatbot")
         self.chat_model = "gpt-4o-mini"  # Ensure this model is supported or change accordingly.
         # Instantiate the new OpenAI client
-        self.openai_client = openai.OpenAI()
+        import httpx
+
+        # Get proxy from environment
+        http_proxy = os.getenv('http_proxy') or os.getenv('HTTP_PROXY')
+        https_proxy = os.getenv('https_proxy') or os.getenv('HTTPS_PROXY')
+
+        if http_proxy or https_proxy:
+            # Use mounts for separate HTTP/HTTPS proxies
+            # Note: HTTPS proxy should still use http:// scheme (not https://)
+            proxy_mounts = {
+                "http://": httpx.HTTPTransport(proxy=http_proxy) if http_proxy else httpx.HTTPTransport(),
+                "https://": httpx.HTTPTransport(proxy=https_proxy or http_proxy) if (https_proxy or http_proxy) else httpx.HTTPTransport(),
+            }
+            http_client = httpx.Client(mounts=proxy_mounts, timeout=60.0)
+            self.openai_client = openai.OpenAI(http_client=http_client)
+        else:
+            self.openai_client = openai.OpenAI(timeout=60.0)
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
     def get_embedding(self, text: str) -> List[float]:
-        """Get embedding for text using OpenAI's official API."""
+        """Get embedding for text using OpenAI or OpenRouter API."""
         logging.debug("Requesting embedding for text: %s", text)
         try:
-            response = openai.embeddings.create(
-                model="text-embedding-3-large",
-                input=text,
-                encoding_format="float"
-            )
-            # Use attribute access for the response.
-            embedding = response.data[0].embedding
-            logging.debug("Received embedding of length %d", len(embedding))
-            return embedding
+            if USE_OPENROUTER:
+                # Use OpenRouter API (supports global access)
+                logging.debug("Using OpenRouter for embeddings")
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "openai/text-embedding-3-large",
+                        "input": text
+                    }
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                # Debug: print the response to understand the structure
+                logging.debug("OpenRouter response: %s", str(result)[:200])
+
+                # Check if there's an error in the response
+                if 'error' in result:
+                    error_msg = result.get('error', {})
+                    logging.error("OpenRouter error: %s", error_msg)
+                    raise Exception(f"OpenRouter API error: {error_msg}")
+
+                # Try to extract embedding from response
+                if 'data' in result and len(result['data']) > 0:
+                    embedding = result['data'][0]['embedding']
+                elif 'embedding' in result:
+                    embedding = result['embedding']
+                else:
+                    logging.error("Unexpected response format: %s", result)
+                    raise Exception(f"Unexpected OpenRouter response format: {result}")
+
+                logging.debug("Received embedding of length %d", len(embedding))
+                return embedding
+            else:
+                # Use OpenAI directly
+                logging.debug("Using OpenAI directly for embeddings")
+                response = openai.embeddings.create(
+                    model="text-embedding-3-large",
+                    input=text,
+                    encoding_format="float"
+                )
+                # Use attribute access for the response.
+                embedding = response.data[0].embedding
+                logging.debug("Received embedding of length %d", len(embedding))
+                return embedding
         except Exception as e:
             logging.error("Error getting embedding: %s", e)
             raise
@@ -236,17 +297,33 @@ class GameChatbot:
     def search_games(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """Search for relevant games using the query."""
         logging.info("Searching games for query: '%s'", query)
+        print(f"\n=== SEARCH_GAMES called with query: '{query}', top_k: {top_k} ===")
         try:
+            print("Step 1: Getting query embedding...")
             query_embedding = self.get_embedding(query)
+            print(f"Step 1 DONE: Got embedding with {len(query_embedding)} dimensions")
+
+            print("Step 2: Querying Pinecone index...")
             results = self.kb.index.query(
                 vector=query_embedding,
                 top_k=top_k,
-                include_metadata=True
+                include_metadata=True,
+                namespace=""  # Explicitly set namespace
             )
+            print(f"Step 2 DONE: Pinecone returned {len(results.matches)} matches")
+
+            if len(results.matches) == 0:
+                print("WARNING: No matches found in Pinecone!")
+            else:
+                print(f"First match: {results.matches[0].metadata.get('name', 'Unknown')} (score: {results.matches[0].score})")
+
             logging.debug("Search returned %d matches", len(results.matches))
             return results.matches
         except Exception as e:
             logging.error("Error during game search: %s", e)
+            print(f"ERROR in search_games: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
     def chat(self, user_message: str) -> str:
@@ -329,19 +406,32 @@ def semantic_search_query(query: str, top_k: int = 10):
     2. Performs a semantic search for 'query' via chatbot.search_games()
     3. Returns a list of dictionaries with the top matches
     """
+    print(f"\n{'='*60}")
+    print(f"SEMANTIC_SEARCH_QUERY called")
+    print(f"Query: '{query}'")
+    print(f"Top K: {top_k}")
+    print(f"{'='*60}\n")
+
+    print("Creating GameKnowledgeBase...")
     kb = GameKnowledgeBase()
+    print("Creating GameChatbot...")
     chatbot = GameChatbot(kb)
 
+    print(f"Calling chatbot.search_games with query: '{query}'")
     pinecone_results = chatbot.search_games(query, top_k=top_k)
+    print(f"Received {len(pinecone_results)} results from Pinecone")
 
     results = []
-    for match in pinecone_results:
+    for i, match in enumerate(pinecone_results):
         meta = match.metadata
         appid = meta.get('appid')
         name = meta.get('name')
         ai_summary = meta.get('ai_summary', '')
         score = match.score  # similarity
-        
+
+        if i < 3:  # Print first 3 results
+            print(f"  Result {i+1}: {name} (appid: {appid}, score: {score:.4f})")
+
         results.append({
             "appid": appid,
             "name": name,
@@ -351,6 +441,14 @@ def semantic_search_query(query: str, top_k: int = 10):
 
     # Sort by descending similarity score
     results.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+    print(f"\n{'='*60}")
+    print(f"SEMANTIC_SEARCH_QUERY completed")
+    print(f"Total results: {len(results)}")
+    if len(results) == 0:
+        print("⚠️  WARNING: Returning EMPTY results!")
+    print(f"{'='*60}\n")
+
     return results
 
 

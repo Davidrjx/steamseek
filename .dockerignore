@@ -1,0 +1,97 @@
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+# .env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+game_summarizer.log
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Checkpoints and state files
+processed_ids.txt
+summaries_checkpoint.txt
+*_checkpoint.txt
+*_state.json
+pinecone_upload_complete.txt
+
+# Data files (optional - uncomment if you want to exclude large data)
+# data/*.jsonl
+# models/*.gguf
+
+# Git
+.git/
+# .gitignore
+.gitattributes
+
+# Documentation (optional)
+*.md
+docs/
+
+# Archive folder
+# archive/
+
+# Credentials (IMPORTANT: never include in Docker image)
+# credentials/
+*.pem
+*.key
+*.crt

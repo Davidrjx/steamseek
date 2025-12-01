@@ -14,13 +14,13 @@ load_dotenv()
 ########################################
 # MODE can be "local" or "api"
 MODE = os.getenv("MODE", "local").lower()
-
+MODE = ""
 if MODE == "api":
     API_URL = os.getenv("OPENROUTER_API_URL")  # e.g., "https://openrouter.ai/api/v1/chat/completions"
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL")
+    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "DeepSeek V3 0324")
 else:
-    API_URL = "http://127.0.0.1:1234/v1/completions"
+    API_URL = "http://10.219.205.24:1234/v1/completions"
 
 ########################################
 # PROMPT & CALL FUNCTIONS
@@ -50,14 +50,14 @@ def create_prompt(game_record):
 def call_lm_studio(prompt, max_tokens=8000, temperature=0.7, top_p=0.9, timeout=180):
     """
     Sends the prompt to the selected API.
-    
+
     - In local mode (LM Studio), uses a payload with "prompt".
     - In API mode (OpenRouter), uses the chat completions payload with a "messages" array.
-    
+
     Returns the generated text from the first choice.
     """
-    headers = {}
-    
+    headers = {"Content-Type": "application/json"}
+
     if MODE == "api":
         payload = {
             "model": OPENROUTER_MODEL,
@@ -71,7 +71,11 @@ def call_lm_studio(prompt, max_tokens=8000, temperature=0.7, top_p=0.9, timeout=
         headers["Authorization"] = f"Bearer {OPENROUTER_API_KEY}"
         current_api_url = API_URL  # e.g., "https://openrouter.ai/api/v1/chat/completions"
     else:
+        # Local LM Studio mode
+        local_model = os.getenv("LM_STUDIO_MODEL", "qwen/qwen3-1.7b")
+
         payload = {
+            "model": local_model,  # Required when multiple models are loaded
             "prompt": prompt,
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -83,8 +87,7 @@ def call_lm_studio(prompt, max_tokens=8000, temperature=0.7, top_p=0.9, timeout=
         response = requests.post(current_api_url, json=payload, headers=headers, timeout=timeout)
         response.raise_for_status()
         data = response.json()
-        # For debugging, you can print part of the raw response if needed:
-        # print(f"Raw response: {json.dumps(data)[:500]}")
+
         if MODE == "api":
             choices = data.get("choices", [])
             if choices and isinstance(choices, list):
@@ -113,7 +116,7 @@ def is_good_review(review_text):
         f"Review: {review_text}\n\nAnswer:"
     )
     print(f"Review classification prompt:\n{prompt}\n")
-    answer = call_lm_studio(prompt, max_tokens=10, temperature=0.0, top_p=1.0, timeout=60)
+    answer = call_lm_studio(prompt, max_tokens=1000, temperature=0.0, top_p=1.0, timeout=60)
     print(f"Review classification answer: {answer}\n")
     return answer.strip().lower().startswith("yes")
 
@@ -138,15 +141,38 @@ def filter_reviews(reviews, max_reviews=100):
 ########################################
 def get_app_list():
     """
-    Fetch the complete list of Steam apps using the official API.
+    Fetch the complete list of Steam apps using the Steam Web API (方案1).
+    Uses access_token from environment variable as query parameter.
     Returns a list of dictionaries with keys "appid" and "name".
     """
     print("Fetching app list from Steam API...")
-    url = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
+
+    # Get access token from environment
+    access_token = os.getenv("STEAM_ACCESS_TOKEN")
+
+    if not access_token:
+        print("Error: STEAM_ACCESS_TOKEN not found in environment variables")
+        return []
+
+    url = f"https://api.steampowered.com/IStoreService/GetAppList/v1/?access_token={access_token}"
+
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
         data = response.json()
-        apps = data.get("applist", {}).get("apps", [])
+
+        # The new API returns data in a different structure
+        # Response format: {"response": {"apps": [...], "have_more_results": true/false}}
+        apps_data = data.get("response", {}).get("apps", [])
+
+        # Convert to the same format as the old API for compatibility
+        apps = []
+        for app in apps_data:
+            apps.append({
+                "appid": app.get("appid"),
+                "name": app.get("name", "")
+            })
+
         print(f"Fetched {len(apps)} apps.")
         return apps
     except Exception as e:
@@ -294,9 +320,15 @@ def main(limit=None, sleep_time=1, output_file="steam_games_data.jsonl", checkpo
 
             raw_reviews = get_reviews(appid_str)
             print(f"Fetched {len(raw_reviews)} reviews for appid {appid_str}")
-            good_reviews = filter_reviews(raw_reviews, max_reviews=100)
-            print(f"Filtered down to {len(good_reviews)} good reviews for appid {appid_str}")
-            game_info["reviews"] = good_reviews
+
+            # Skip LLM filtering for now, just save raw reviews (max 100)
+            # good_reviews = filter_reviews(raw_reviews, max_reviews=100)
+            # print(f"Filtered down to {len(good_reviews)} good reviews for appid {appid_str}")
+
+            # Sort by votes_up and take top 100
+            sorted_reviews = sorted(raw_reviews, key=lambda r: r.get("votes_up", 0), reverse=True)
+            game_info["reviews"] = sorted_reviews[:100]
+            print(f"Saved top {len(game_info['reviews'])} reviews (sorted by votes_up)")
 
             save_game_data(game_info, output_file)
             new_games += 1

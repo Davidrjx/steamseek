@@ -132,6 +132,32 @@ Generate the JSON object now:"""
     return prompt
 
 
+def _get_default_analysis() -> dict:
+    """Return a default/empty analysis structure when LLM fails."""
+    return {
+        "ai_summary": "Analysis not available. Please try again later.",
+        "feature_sentiment": {},
+        "standout_features": [],
+        "community_feedback": {
+            "strengths": [],
+            "areas_for_improvement": [],
+            "narrative": "No community feedback available.",
+            "sentiment_breakdown": {}
+        },
+        "market_analysis": {
+            "market_position": "Not analyzed",
+            "underserved_audience": "Not analyzed",
+            "competitive_advantage": "Not analyzed",
+            "narrative": "Market analysis not available."
+        },
+        "feature_validation": {
+            "features_worth_implementing": [],
+            "features_to_approach_with_caution": [],
+            "narrative": "Feature validation not available."
+        }
+    }
+
+
 def generate_game_analysis(game_data: dict) -> dict:
     """
     Generate a complete game analysis by sending a prompt with context to the LLM
@@ -167,20 +193,58 @@ def generate_game_analysis(game_data: dict) -> dict:
     }
     
     try:
-        response = requests.post(OPENROUTER_API_URL, headers=headers, data=json.dumps(data))
+        response = requests.post(OPENROUTER_API_URL, headers=headers, data=json.dumps(data), timeout=60)
+
         if response.status_code == 200:
             result = response.json()
+
+            # Debug: Check response structure
+            if "choices" not in result or not result["choices"]:
+                print(f"Error: No 'choices' in response: {result}")
+                return _get_default_analysis()
+
             # Extract the content from the first choice
             content = result["choices"][0]["message"]["content"]
+
+            # Debug: Check if content is empty
+            if not content or not content.strip():
+                print(f"Error: Empty content returned from LLM")
+                print(f"Full response: {result}")
+                return _get_default_analysis()
+
+            print(f"LLM returned content (first 200 chars): {content[:200]}")
+
+            # Strip markdown code blocks if present
+            content = content.strip()
+            if content.startswith("```json"):
+                content = content[7:]  # Remove ```json
+            elif content.startswith("```"):
+                content = content[3:]  # Remove ```
+
+            if content.endswith("```"):
+                content = content[:-3]  # Remove trailing ```
+
+            content = content.strip()
+
             # Attempt to parse the content as JSON
-            analysis = json.loads(content)
-            return analysis
+            try:
+                analysis = json.loads(content)
+                return analysis
+            except json.JSONDecodeError as je:
+                print(f"Error: Failed to parse LLM response as JSON: {je}")
+                print(f"Content received (after cleanup): {content[:500]}")
+                return _get_default_analysis()
         else:
             print(f"LLM API request failed with status {response.status_code}: {response.text}")
-            return {}
+            return _get_default_analysis()
+    except requests.exceptions.Timeout:
+        print(f"Error: LLM request timed out after 60 seconds")
+        return _get_default_analysis()
     except Exception as e:
         print(f"Exception during LLM request: {e}")
-        return {}
+        import traceback
+        traceback.print_exc()
+        return _get_default_analysis()
 
 
 def rerank_search_results(query: str, candidates: List[Dict[str, Any]], model: str = MODEL) -> Tuple[Optional[List[int]], Optional[str]]:

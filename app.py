@@ -10,8 +10,12 @@ from threading import Thread
 import uuid
 import requests
 import urllib.parse  # For URL encoding
+# from dotenv import load_dotenv
 
-# Import Firebase and Flask-Login 
+# # Load environment variables before importing firebase_config
+# load_dotenv()
+
+# Import Firebase and Flask-Login
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from firebase_config import User, firebase_auth, db
 
@@ -24,6 +28,7 @@ from llm_processor import (generate_game_analysis, rerank_search_results, OPENRO
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your-secret-key")  # Required for session support
+# app.config["SERVER_NAME"] = os.environ.get("FLASK_SERVER_NAME", "127.0.0.1:5000")  # Commented out to fix access issues
 
 # Initialize LoginManager
 login_manager = LoginManager()
@@ -42,6 +47,7 @@ if not app.debug: # Optionally configure differently for production
     # handler = logging.FileHandler('app.log')
     # handler.setLevel(logging.INFO)
     # app.logger.addHandler(handler)
+    app.logger.setLevel(logging.DEBUG)
     pass 
 else:
      # Ensure logger level is set for debug mode
@@ -1238,6 +1244,7 @@ def search():
         # ... [rest of the GET handling code remains the same]
 
         # Added special case for AJAX standard search
+        print(f"###GET request - Query: '{query}', AJAX: {is_ajax}, No Reload: {no_reload}, use_ai_enhanced: {use_ai_enhanced}, use_deep_search: {use_deep_search}")
         if query and is_ajax and no_reload and not use_ai_enhanced and not use_deep_search:
             print(f"Running standard search via AJAX GET for query: '{query}'")
             
@@ -2540,4 +2547,4 @@ def regular_search_background_task(query, search_params, use_ai_enhanced=False):
 
 if __name__ == "__main__":
     # Make sure debug is True for development logging
-    app.run(debug=True, threaded=True)
+    app.run(host='0.0.0.0', debug=True, threaded=True)
