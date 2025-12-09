@@ -18,7 +18,7 @@ load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 INDEX_NAME = "game-knowledge"
-GAMES_FILE = "data/steam_games_data.jsonl"
+GAMES_FILE = "data/steam_games_data_second.jsonl"
 BATCH_SIZE = 10  # Process 10 games at a time
 DELAY_BETWEEN_BATCHES = 2  # Wait 2 seconds between batches to avoid rate limits
 
@@ -86,6 +86,7 @@ def main():
     # Process games in batches
     total_processed = 0
     total_failed = 0
+    total_skipped = 0
 
     for i in range(0, len(games), BATCH_SIZE):
         batch = games[i:i+BATCH_SIZE]
@@ -93,6 +94,20 @@ def main():
         total_batches = (len(games) + BATCH_SIZE - 1) // BATCH_SIZE
 
         print(f"\nProcessing batch {batch_num}/{total_batches} ({len(batch)} games)...")
+
+        # check which games already exist in pinecone
+        batch_appids = [str(game.get('appid', '')) for game in batch if game.get('appid')]
+        existing_ids = set()
+
+        if batch_appids:
+            print(f"  Checking for existing vectors/records in pinecone...")
+            try:
+                fetch_results = index.fetch(ids=batch_appids, namespace="")
+                existing_ids = set(fetch_results.vectors.keys())
+                if existing_ids:
+                    print(f"  Found {len(existing_ids)} existing vectors/records in pinecone")
+            except Exception as e:
+                print(f"  warning: checking for existing vectors/records in pinecone: {e}, continuing...")
 
         vectors_to_upsert = []
 
@@ -107,6 +122,11 @@ def main():
                     continue
 
                 print(f"  Processing: {name} (appid: {appid})")
+
+                if appid in existing_ids:
+                    print(f"  ✓ Already exists in Pinecone, skipping")
+                    total_skipped += 1
+                    continue
 
                 # Create text for embedding
                 embedding_text = create_embedding_text(game)
@@ -177,7 +197,7 @@ def main():
     print("Processing Complete!")
     print("="*60)
     print(f"Successfully processed: {total_processed} games")
-    print(f"Failed: {total_failed} games")
+    print(f"Failed: {total_failed} games, Skipped: {total_skipped} games")
 
     # Check final index stats
     stats = index.describe_index_stats()

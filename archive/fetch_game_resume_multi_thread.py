@@ -5,6 +5,8 @@ import argparse
 import os
 from tqdm import tqdm
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 # Load environment variables from .env file
 load_dotenv()
@@ -166,10 +168,10 @@ def get_app_list(max_results=50000, last_appid=0):
         "key": steam_web_api_key,
         "max_results": max_results,
         "include_games": 1,
-        "include_dlc": 0,
-        "include_software": 0,
-        "include_videos": 0,
-        "include_hardware": 0
+        "include_dlc": 1,
+        "include_software": 1,
+        "include_videos": 1,
+        "include_hardware": 1
     }
 
     if last_appid > 0:
@@ -213,13 +215,9 @@ def get_app_list(max_results=50000, last_appid=0):
         return ([], False, 0)
 
 
-def main(limit=None, sleep_time=1, 
-         output_file="steam_games_data.jsonl", 
-         checkpoint_file="processed_ids.txt", 
-         failed_file="failed_app_ids.txt", 
-         batch_size=10000):
+def main(limit=None, sleep_time=1, output_file="steam_games_data.jsonl", checkpoint_file="processed_ids.txt", batch_size=10000, max_workers=10):
     """
-    Main function to fetch and process Steam games with external pagination loop.
+    Main function to fetch and process Steam games with external pagination loop and concurrent processing.
 
     Args:
         limit: Maximum number of apps to process (None for all)
@@ -227,6 +225,7 @@ def main(limit=None, sleep_time=1,
         output_file: Output JSONL file path
         checkpoint_file: Checkpoint file to track processed apps
         batch_size: Number of apps to fetch per API call
+        max_workers: Maximum number of concurrent threads (default: 10)
     """
     # Load already processed app IDs
     processed_appids = load_processed_appids(checkpoint_file)
@@ -257,61 +256,54 @@ def main(limit=None, sleep_time=1,
             print("No apps returned. Stopping.")
             break
 
-        print(f"Processing batch of {len(apps_batch)} apps...")
+        # Calculate actual workers before printing
+        # Reduce concurrency to avoid triggering Steam's rate limiting (max 5 workers recommended)
+        actual_workers = min(min(max_workers, 5), len(apps_batch))  # Limit to 5 threads max
+        if actual_workers != max_workers:
+            print(f"Note: Limiting concurrent threads to {actual_workers} to avoid rate limiting")
+        print(f"Processing batch of {len(apps_batch)} apps with {actual_workers} concurrent threads...")
 
-        # Process each app in the batch
-        for app in tqdm(apps_batch, desc=f"Processing batch {page}"):
-            appid_str = str(app.get("appid"))
+        # Create thread-safe locks
+        checkpoint_lock = Lock()
+        file_lock = Lock()
 
-            # Check if already processed
-            if appid_str in processed_appids:
-                skipped_apps += 1
-                continue
+        with ThreadPoolExecutor(max_workers=actual_workers) as executor:
+            # Submit all tasks
+            future_to_app = {
+                executor.submit(
+                    process_single_app,
+                    app,
+                    processed_appids,
+                    output_file,
+                    checkpoint_file,
+                    checkpoint_lock,
+                    file_lock,
+                    sleep_time
+                ): app for app in apps_batch
+            }
 
-            total_processed += 1
+            # Process completed tasks with progress bar
+            for future in tqdm(as_completed(future_to_app), total=len(apps_batch), desc=f"Processing batch {page}"):
+                app = future_to_app[future]
+                try:
+                    appid_str, status, is_game = future.result()
 
-            print(f"Processing appid {appid_str}")
-            store_data = get_store_data(appid_str)
+                    # Update processed set (thread-safe)
+                    processed_appids.add(appid_str)
 
-            # Mark as processed regardless of outcome
-            append_checkpoint(appid_str, checkpoint_file)
-            processed_appids.add(appid_str)
+                    if status == 'skipped':
+                        skipped_apps += 1
+                    elif status == 'success':
+                        new_games += 1
+                        total_processed += 1
+                    elif status == 'not_game':
+                        total_processed += 1
+                    elif status == 'error':
+                        total_processed += 1
 
-            if not store_data:
-                print(f"Saved game: appid {appid_str} to {failed_file} as store data is unavailable.")
-                continue
-            
-            game_type = store_data.get("type")
-            if store_data and game_type == "game":
-                game_info = {
-                    "appid": appid_str,
-                    "name": store_data.get("name"),
-                    "short_description": store_data.get("short_description"),
-                    "detailed_description": store_data.get("detailed_description"),
-                    "release_date": store_data.get("release_date", {}).get("date"),
-                    "developers": store_data.get("developers"),
-                    "publishers": store_data.get("publishers"),
-                    "header_image": store_data.get("header_image"),
-                    "website": store_data.get("website"),
-                    "store_data": store_data,
-                    "reviews": []
-                }
-
-                raw_reviews = get_reviews(appid_str)
-                print(f"Fetched {len(raw_reviews)} reviews for appid {appid_str}")
-
-                # Sort by votes_up and take top 100
-                sorted_reviews = sorted(raw_reviews, key=lambda r: r.get("votes_up", 0), reverse=True)
-                game_info["reviews"] = sorted_reviews[:100]
-                print(f"Saved top {len(game_info['reviews'])} reviews (sorted by votes_up)")
-
-                save_game_data(game_info, output_file)
-                new_games += 1
-                print(f"Saved game: appid {appid_str} - {store_data.get('name')}")
-            else:
-                print(f"Skipping appid {appid_str} with type {game_type} as it is not a game.")
-
-            time.sleep(sleep_time)
+                except Exception as e:
+                    appid = app.get("appid")
+                    print(f"Exception for appid {appid}: {e}")
 
         print(f"\nBatch {page} complete. Total new games so far: {new_games}, Skipped: {skipped_apps}")
         page += 1
@@ -359,7 +351,7 @@ def get_store_data(appid, country="us", language="en", max_retries=3, retry_dela
         try:
             response = requests.get(url, headers=headers, timeout=10)
             # Handle non 200 errors with retry
-            if response.status_code in [403, 429, 500, 504, 502, 503]:
+            if response.status_code in  [403, 429, 500, 504, 502, 503]:
                 print(f"  Fetching store data for appid {appid} (attempt {attempt + 1}/{max_retries}), status {response.status_code}")
                 if attempt < max_retries - 1:
                     wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
@@ -372,18 +364,20 @@ def get_store_data(appid, country="us", language="en", max_retries=3, retry_dela
 
             # Check if response has content
             if not response.content:
+                # Silent fail for empty responses
                 return None
 
             # Try to parse JSON
             try:
                 data = response.json()
             except json.JSONDecodeError:
-                # Not valid JSON - might be HTML error page
+                # Silent fail for non-JSON responses (HTML error pages, etc.)
                 return None
             except ValueError:
+                # Silent fail for other JSON parsing errors
                 return None
 
-            # Check if data is valid
+            # Check if data is None or not a dict
             if data is None or not isinstance(data, dict):
                 return None
 
@@ -393,13 +387,14 @@ def get_store_data(appid, country="us", language="en", max_retries=3, retry_dela
                 return None
 
         except requests.exceptions.Timeout:
+            # Silent fail for timeouts
             return None
         except requests.exceptions.RequestException:
+            # Silent fail for network errors
             return None
         except Exception as e:
-            # Only log unexpected errors (not JSON decode errors)
-            if "Expecting value" not in str(e):
-                print(f"Unexpected error for appid {appid}: {e}")
+            # Only log unexpected errors
+            print(f"Unexpected error for appid {appid}: {e}")
             return None
 
     return None
@@ -431,7 +426,7 @@ def get_reviews(appid, num_per_page=100, max_retries=3, retry_delay=2):
             response = requests.get(url, headers=headers, timeout=10)
 
             # Handle 403 errors with retry
-            if response.status_code in [403, 429, 500, 504, 502, 503]:
+            if response.status_code != 200:
                 print(f"  Fetching reviews for appid {appid} (attempt {attempt + 1}/{max_retries}), status {response.status_code}")
                 if attempt < max_retries - 1:
                     wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
@@ -454,7 +449,7 @@ def get_reviews(appid, num_per_page=100, max_retries=3, retry_delay=2):
             except ValueError:
                 return []
 
-            # Check if data is valid
+            # Check if data is None or not a dict
             if data is None or not isinstance(data, dict):
                 return []
 
@@ -466,9 +461,7 @@ def get_reviews(appid, num_per_page=100, max_retries=3, retry_delay=2):
         except requests.exceptions.RequestException:
             return []
         except Exception as e:
-            # Only log unexpected errors (not JSON decode errors)
-            if "Expecting value" not in str(e):
-                print(f"Unexpected error fetching reviews for appid {appid}: {e}")
+            print(f"Unexpected error fetching reviews for appid {appid}: {e}")
             return []
 
     return []
@@ -521,27 +514,87 @@ def load_processed_appids(checkpoint_file):
                 processed_ids.add(line.strip())
     return processed_ids
 
-def append_failed_appid(appid, failed_appids_file):
-    """
-    Append an appid to the failed appids file.
-    """
-    try:
-        with open(failed_appids_file, "a", encoding="utf-8") as f:
-            f.write(str(appid) + "\n")
-            f.flush()
-    except Exception as e:
-        print(f"Error writing appid {appid} to failed appids: {e}")
-
-def append_checkpoint(appid, checkpoint_file):
+def append_checkpoint(appid, checkpoint_file, lock=None):
     """
     Append an appid to the checkpoint file.
+    Thread-safe when lock is provided.
     """
     try:
-        with open(checkpoint_file, "a", encoding="utf-8") as f:
-            f.write(str(appid) + "\n")
-            f.flush()
+        if lock:
+            with lock:
+                with open(checkpoint_file, "a", encoding="utf-8") as f:
+                    f.write(str(appid) + "\n")
+                    f.flush()
+        else:
+            with open(checkpoint_file, "a", encoding="utf-8") as f:
+                f.write(str(appid) + "\n")
+                f.flush()
     except Exception as e:
         print(f"Error writing appid {appid} to checkpoint: {e}")
+
+def process_single_app(app, processed_appids, output_file, checkpoint_file, checkpoint_lock, file_lock, sleep_time=0):
+    """
+    Process a single app: fetch store data and reviews, save to file.
+    Thread-safe function for concurrent execution.
+
+    Returns:
+        tuple: (appid_str, status, is_game)
+            - appid_str: The app ID as string
+            - status: 'skipped', 'not_game', 'success', or 'error'
+            - is_game: Boolean indicating if it's a game
+    """
+    appid_str = str(app.get("appid"))
+
+    # Check if already processed (thread-safe read from set)
+    if appid_str in processed_appids:
+        return (appid_str, 'skipped', False)
+
+    try:
+        # Fetch store data
+        store_data = get_store_data(appid_str)
+
+        # Mark as processed regardless of outcome
+        append_checkpoint(appid_str, checkpoint_file, lock=checkpoint_lock)
+
+        if store_data and store_data.get("type") == "game":
+            game_info = {
+                "appid": appid_str,
+                "name": store_data.get("name"),
+                "short_description": store_data.get("short_description"),
+                "detailed_description": store_data.get("detailed_description"),
+                "release_date": store_data.get("release_date", {}).get("date"),
+                "developers": store_data.get("developers"),
+                "publishers": store_data.get("publishers"),
+                "header_image": store_data.get("header_image"),
+                "website": store_data.get("website"),
+                "store_data": store_data,
+                "reviews": []
+            }
+
+            raw_reviews = get_reviews(appid_str)
+
+            # Sort by votes_up and take top 100
+            sorted_reviews = sorted(raw_reviews, key=lambda r: r.get("votes_up", 0), reverse=True)
+            game_info["reviews"] = sorted_reviews[:100]
+
+            # Save game data (thread-safe file write)
+            if file_lock:
+                with file_lock:
+                    save_game_data(game_info, output_file)
+            else:
+                save_game_data(game_info, output_file)
+
+            # Add delay to avoid rate limiting (minimum 0.5s recommended)
+            delay = max(sleep_time, 0.5)
+            time.sleep(delay)
+
+            return (appid_str, 'success', True)
+        else:
+            return (appid_str, 'not_game', False)
+
+    except Exception as e:
+        print(f"Error processing appid {appid_str}: {e}")
+        return (appid_str, 'error', False)
 
 ########################################
 # MAIN DATA ACQUISITION LOGIC
@@ -616,16 +669,19 @@ def main_bak(limit=None, sleep_time=1, output_file="steam_games_data.jsonl", che
     print(f"Checkpoint file updated: {checkpoint_file}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Steam Games Data Acquisition with Review Filtering and Progress Reporting")
+    parser = argparse.ArgumentParser(description="Steam Games Data Acquisition with Concurrent Processing")
     parser.add_argument("--limit", type=int, help="Limit the number of apps to process (for testing)", default=None)
-    parser.add_argument("--sleep", type=float, help="Sleep time (in seconds) between API calls", default=1)
+    parser.add_argument("--sleep", type=float, help="Sleep time (in seconds) between processing each app", default=0)
     parser.add_argument("--output", type=str, help="Output JSONL file path", default="steam_games_data.jsonl")
     parser.add_argument("--checkpoint", type=str, help="Checkpoint file path", default="processed_ids.txt")
-    parser.add_argument("--failed-appids", type=str, help="File to store failed app IDs", default="failed_appids.txt")
-    parser.add_argument("--max-results", type=int, help="max results per request", default="10000")
+    parser.add_argument("--batch-size", type=int, help="Number of apps to fetch per API call", default=10000)
+    parser.add_argument("--workers", type=int, help="Number of concurrent threads (default: 10)", default=10)
     args = parser.parse_args()
-    main(limit=args.limit, sleep_time=args.sleep, 
-         output_file=args.output, 
-         checkpoint_file=args.checkpoint, 
-         failed_file=args.failed_appids, 
-         batch_size=args.max_results)
+    main(
+        limit=args.limit,
+        sleep_time=args.sleep,
+        output_file=args.output,
+        checkpoint_file=args.checkpoint,
+        batch_size=args.batch_size,
+        max_workers=args.workers
+    )
