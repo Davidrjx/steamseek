@@ -1,3 +1,4 @@
+###
 # 单线程
 python archive/fetch_game_resume.py --limit 50000 --sleep 0.5 --output steam_games_data.jsonl --checkpoint processed_ids.txt   --max-results 1000
 
@@ -9,13 +10,20 @@ python archive/fetch_game_resume_multi_thread.py --limit 50000 --sleep 0.5 --out
 
 
 # generate game text embedding and upload to vector db
-python generate_and_upload_embeddings.py
+python generate_and_upload_embeddings.py --batch-size 20 data/steam_games_data.jsonl
 
 
-# generate game summary
+### generate game summary
+# as for sequential generation for steam_games_data.jsonl
 python game_summarizer.py --input data/steam_games_data.jsonl --output data/summaries.jsonl --state data/summarizer_state.json
 
+# (recommended) summary generation thread optimization
+python game_summarizer_threaded.py --input data/steam_games_data.jsonl --output data/summaries.jsonl --state data/summarizer_state.json --workers 5
 
-# tool
+# for single game app
+python game_summarizer.py --appid 219740 --output data/summaries_tmp.jsonl
+
+### tool
 # # 过滤已处理的app
-grep -Po '"appid":\s*"[0-9]{1,8}"' steam_games_data.jsonl
+grep -Po '"appid":\s*"?[0-9]{1,8}"?' steam_games_data.jsonl
+

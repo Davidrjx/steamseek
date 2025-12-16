@@ -246,10 +246,70 @@ Top Player Reviews:
                         continue
             
             self.logger.info("Processing completed!")
-            
+
         except Exception as e:
             self.logger.error(f"Fatal error: {e}")
             self._save_state()
+            raise
+
+    async def process_single_game(self, target_appid: int):
+        """Process a single game by appid."""
+        self.logger.info(f"Looking for game with appid {target_appid}...")
+
+        try:
+            with open(self.input_file, 'r') as infile:
+                for line in infile:
+                    try:
+                        game_data = json.loads(line)
+                        game_id = game_data.get('appid')
+
+                        # Convert to int for comparison
+                        if isinstance(game_id, str):
+                            game_id = int(game_id)
+
+                        if game_id != target_appid:
+                            continue
+
+                        # Found the game
+                        self.logger.info(f"Found game: {game_data.get('name')} (appid: {game_id})")
+
+                        summary = await self._generate_summary(game_data)
+
+                        if summary:
+                            output_data = {
+                                "appid": game_id,
+                                "name": game_data.get("name"),
+                                "short_description": game_data.get("short_description"),
+                                "ai_summary": summary,
+                                "summary_generated_at": datetime.now().isoformat(),
+                                "summary_model": self.model
+                            }
+
+                            # Append to output file
+                            with open(self.output_file, 'a') as outfile:
+                                json.dump(output_data, outfile)
+                                outfile.write('\n')
+
+                            self.logger.info(f"Successfully generated summary for {game_data.get('name')} ({game_id})")
+                            print(f"\n{'='*60}")
+                            print(f"AI Summary for {game_data.get('name')}:")
+                            print(f"{'='*60}")
+                            print(summary)
+                            print(f"{'='*60}")
+                            print(f"Summary saved to {self.output_file}")
+                            return True
+                        else:
+                            self.logger.error(f"Failed to generate summary for {game_data.get('name')}")
+                            return False
+
+                    except json.JSONDecodeError:
+                        continue
+
+            self.logger.error(f"Game with appid {target_appid} not found in {self.input_file}")
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Error processing single game: {e}")
             raise
 
 async def main():
@@ -265,10 +325,13 @@ async def main():
                         help="State file path for resuming")
     parser.add_argument("--api-key", required=False,
                         help="OpenRouter API key")
-    parser.add_argument("--model", 
+    parser.add_argument("--model",
                         default="mistralai/mistral-nemo",
                         help="Model identifier to use")
-    
+    parser.add_argument("--appid",
+                        type=int,
+                        help="Only process a single game by appid (e.g., --appid 219740)")
+
     args = parser.parse_args()
     
     # Create output directory if needed
@@ -281,8 +344,12 @@ async def main():
         openrouter_key=args.api_key,
         model=args.model
     )
-    
-    await summarizer.process_games()
+
+    # Process single game or all games
+    if args.appid:
+        await summarizer.process_single_game(args.appid)
+    else:
+        await summarizer.process_games()
 
 if __name__ == "__main__":
     asyncio.run(main())

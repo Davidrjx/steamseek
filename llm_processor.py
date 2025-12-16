@@ -853,55 +853,55 @@ Focus only on the most relevant games to the original query: "{query}"
         return [r["appid"] for r in combined_results], f"Found {len(combined_results)} games related to your search. We couldn't generate a complete summary due to a technical issue: {str(e)}"
 
 
-def generate_completion(prompt: str, model: str = MODEL, max_tokens: int = 100) -> str:
-    """
-    Generate a simple text completion using the LLM.
+# def generate_completion(prompt: str, model: str = MODEL, max_tokens: int = 100) -> str:
+#     """
+#     Generate a simple text completion using the LLM.
     
-    Args:
-        prompt: The input text prompt for the LLM.
-        model: The identifier for the LLM model to use on OpenRouter.
-        max_tokens: Maximum tokens to generate in the response.
+#     Args:
+#         prompt: The input text prompt for the LLM.
+#         model: The identifier for the LLM model to use on OpenRouter.
+#         max_tokens: Maximum tokens to generate in the response.
         
-    Returns:
-        A string containing the generated text, or None if an error occurs.
-    """
-    print(f"Generating completion for prompt: {prompt[:50]}...")
+#     Returns:
+#         A string containing the generated text, or None if an error occurs.
+#     """
+#     print(f"Generating completion for prompt: {prompt[:50]}...")
     
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://your-site.com",  # Optional; update with your site
-        "X-Title": "Steam Seek"                 # Optional title 
-    }
+#     headers = {
+#         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+#         "Content-Type": "application/json",
+#         "HTTP-Referer": "http://your-site.com",  # Optional; update with your site
+#         "X-Title": "Steam Seek"                 # Optional title 
+#     }
     
-    data = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant. Respond directly and concisely to the user's request."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "max_tokens": max_tokens
-    }
+#     data = {
+#         "model": model,
+#         "messages": [
+#             {
+#                 "role": "system",
+#                 "content": "You are a helpful assistant. Respond directly and concisely to the user's request."
+#             },
+#             {
+#                 "role": "user",
+#                 "content": prompt
+#             }
+#         ],
+#         "max_tokens": max_tokens
+#     }
     
-    try:
-        response = requests.post(OPENROUTER_API_URL, headers=headers, data=json.dumps(data))
-        if response.status_code == 200:
-            result = response.json()
-            # Extract the content from the first choice
-            content = result["choices"][0]["message"]["content"]
-            return content.strip()
-        else:
-            print(f"LLM API request failed with status {response.status_code}: {response.text}")
-            return None
-    except Exception as e:
-        print(f"Exception during LLM request: {e}")
-        return None
+#     try:
+#         response = requests.post(OPENROUTER_API_URL, headers=headers, data=json.dumps(data))
+#         if response.status_code == 200:
+#             result = response.json()
+#             # Extract the content from the first choice
+#             content = result["choices"][0]["message"]["content"]
+#             return content.strip()
+#         else:
+#             print(f"LLM API request failed with status {response.status_code}: {response.text}")
+#             return None
+#     except Exception as e:
+#         print(f"Exception during LLM request: {e}")
+#         return None
 
 
 # When called externally (e.g., from game_dashboard.py), call generate_game_analysis(game_data)

@@ -1317,30 +1317,55 @@ def search():
         
         print(f"GET request - Query: '{query}', View Results: {view_results}, Run Search: {run_search}, Deep Search Status: completed={deep_search_status['completed']}, original_query='{deep_search_status['original_query']}'")
         
-        # Special handling for view_results parameter - this means we're coming from 
+        # Special handling for view_results parameter - this means we're coming from
         # a completed deep search or regular search and should display its results without restarting it
         if view_results and query:
-            # For deep search results
-            if deep_search_status["completed"] and query.lower() == deep_search_status["original_query"].lower():
-                print(f"Showing completed deep search results for query: '{query}' (view_results=true)")
+            # Check which search type was requested based on URL parameters
+            # Priority: use_deep_search > use_ai_enhanced > fallback to any completed search
+
+            # For deep search results (when explicitly requested)
+            if use_deep_search and deep_search_status["completed"] and query.lower() == deep_search_status["original_query"].lower():
+                print(f"Showing completed deep search results for query: '{query}' (view_results=true, use_deep_search=true)")
                 results = deep_search_status["results"]
                 grand_summary = deep_search_status["grand_summary"]
                 deep_search_active = False
                 deep_search_status["results_served"] = True  # Mark as served to prevent reuse
                 use_deep_search = False  # Reset the flag since we're just viewing results
-                
+
                 # Don't save large result sets in session
                 # session['previous_results'] = results  # REMOVED
-            
-            # For regular/AI enhanced search results    
-            elif regular_search_status["completed"] and query.lower() == regular_search_status["query"].lower():
-                print(f"Showing completed regular search results for query: '{query}' (view_results=true)")
-                
+
+            # For regular/AI enhanced search results (when explicitly requested)
+            elif use_ai_enhanced and regular_search_status["completed"] and query.lower() == regular_search_status["query"].lower():
+                print(f"Showing completed AI Enhanced search results for query: '{query}' (view_results=true, use_ai_enhanced=true)")
+
                 # Use the stored results from the completed background task
                 results = regular_search_status["results"]
                 optimization_explanation = regular_search_status["optimization_explanation"]
                 regular_search_active = False
-                
+
+                # Don't save large result sets in session
+                # session['previous_results'] = results  # REMOVED
+
+            # Fallback: try to use any completed search results
+            elif regular_search_status["completed"] and query.lower() == regular_search_status["query"].lower():
+                print(f"Showing completed regular search results for query: '{query}' (view_results=true, fallback to regular)")
+
+                # Use the stored results from the completed background task
+                results = regular_search_status["results"]
+                optimization_explanation = regular_search_status["optimization_explanation"]
+                regular_search_active = False
+
+                # Don't save large result sets in session
+                # session['previous_results'] = results  # REMOVED
+
+            elif deep_search_status["completed"] and query.lower() == deep_search_status["original_query"].lower():
+                print(f"Showing completed deep search results for query: '{query}' (view_results=true, fallback to deep)")
+                results = deep_search_status["results"]
+                grand_summary = deep_search_status["grand_summary"]
+                deep_search_active = False
+                deep_search_status["results_served"] = True  # Mark as served to prevent reuse
+
                 # Don't save large result sets in session
                 # session['previous_results'] = results  # REMOVED
             

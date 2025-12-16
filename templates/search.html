@@ -2,289 +2,294 @@
 {% block title %}Search Games{% endblock %}
 
 {% block main_content %}
-  {% if is_partial_results %}
-    <!-- When is_partial_results is true, only render the results section for AJAX -->
-    <div class="row row-cols-1 row-cols-md-2 g-3">
-      {% for r in results %}
-        <div class="col">
-          <div class="card h-100 shadow-sm">
-            <!-- Bootstrap Carousel for each result -->
-            <div id="carousel-{{ r.appid }}" class="carousel slide card-img-top" style="max-height: 220px; overflow: hidden;">
-              <div class="carousel-inner">
-                {% for item in r.media %}
-                  {% set lower_item = item|lower %}
-                  <div class="carousel-item {% if loop.first %}active{% endif %}">
-                    {% if 'webm' in lower_item %}
-                      <video class="d-block w-100" controls>
-                        <source src="{{ item }}" type="video/webm">
-                        Your browser does not support the video tag.
-                      </video>
-                    {% elif 'mp4' in lower_item %}
-                      <video class="d-block w-100" controls>
-                        <source src="{{ item }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                      </video>
-                    {% else %}
-                      <img src="{{ item }}" class="d-block w-100" alt="{{ r.name }}">
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-              {% if r.media|length > 1 %}
-                <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ r.appid }}" data-bs-slide="prev">
-                  <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                  <span class="visually-hidden">Previous</span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ r.appid }}" data-bs-slide="next">
-                  <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                  <span class="visually-hidden">Next</span>
-                </button>
+{% if is_partial_results %}
+<!-- When is_partial_results is true, only render the results section for AJAX -->
+<div class="row row-cols-1 row-cols-md-2 g-3">
+  {% for r in results %}
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <!-- Bootstrap Carousel for each result -->
+      <div id="carousel-{{ r.appid }}" class="carousel slide card-img-top" style="max-height: 220px; overflow: hidden;">
+        <div class="carousel-inner">
+          {% for item in r.media %}
+          {% set lower_item = item|lower %}
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            {% if 'webm' in lower_item %}
+            <video class="d-block w-100" controls>
+              <source src="{{ item }}" type="video/webm">
+              Your browser does not support the video tag.
+            </video>
+            {% elif 'mp4' in lower_item %}
+            <video class="d-block w-100" controls>
+              <source src="{{ item }}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            {% else %}
+            <img src="{{ item }}" class="d-block w-100" alt="{{ r.name }}">
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if r.media|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ r.appid }}"
+          data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ r.appid }}"
+          data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Next</span>
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="card-title mb-0 text-truncate">
+            <a href="https://store.steampowered.com/app/{{ r.appid }}/" target="_blank"
+              class="text-decoration-none text-reset">
+              {{ r.name }}
+            </a>
+          </h5>
+          {% if current_user.is_authenticated %}
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2 flex-shrink-0" data-bs-toggle="modal"
+            data-bs-target="#saveGameModal-{{ r.appid }}">
+            <i class="bi bi-plus-circle"></i>
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="game-details small text-muted mb-2">
+          {% if r.genres %}
+          <div><strong>Genres:</strong> {{ r.genres|join(', ') }}</div>
+          {% endif %}
+          <div class="d-flex justify-content-between">
+            <span><strong>Year:</strong> {{ r.release_year }}</span>
+            <span><strong>Price:</strong> {% if r.is_free %}Free{% else %}${{ r.price }}{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span><strong>Rating:</strong> {{ r.pos_percent|round(0) }}%</span>
+            <span><strong>Reviews:</strong> {{ r.total_reviews }}</span>
+          </div>
+        </div>
+
+        <!-- Action buttons at bottom of card -->
+        <div class="mt-auto">
+          <div class="d-flex flex-column gap-2">
+            <!-- Action buttons row -->
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('detail', appid=r.appid) }}" class="btn btn-sm btn-primary flex-grow-1 show-loader">
+                <i class="bi bi-bar-chart-fill"></i><span class="d-none d-sm-inline ms-1">Analyze</span>
+              </a>
+              <a href="https://www.youtube.com/results?search_query={{ r.name|replace(' ', '+') }}+gameplay"
+                class="btn btn-sm btn-danger flex-grow-1" target="_blank">
+                <i class="bi bi-youtube"></i><span class="d-none d-sm-inline ms-1">YouTube</span>
+              </a>
+              {% if current_user.is_authenticated %}
+              <button type="button" class="btn btn-sm btn-info flex-grow-1 game-note-btn" data-appid="{{ r.appid }}"
+                data-game-name="{{ r.name }}">
+                <i class="bi bi-journal-text"></i><span class="d-none d-sm-inline ms-1">Notes</span>
+              </button>
               {% endif %}
             </div>
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-start mb-2">
-                <h5 class="card-title mb-0 text-truncate">
-                  <a href="https://store.steampowered.com/app/{{ r.appid }}/" target="_blank" class="text-decoration-none text-reset">
-                    {{ r.name }}
-                  </a>
-                </h5>
-                {% if current_user.is_authenticated %}
-                <button type="button" class="btn btn-sm btn-outline-primary ms-2 flex-shrink-0" data-bs-toggle="modal" data-bs-target="#saveGameModal-{{ r.appid }}">
-                  <i class="bi bi-plus-circle"></i>
-                </button>
-                {% endif %}
-              </div>
-              
-              <div class="game-details small text-muted mb-2">
-                {% if r.genres %}
-                  <div><strong>Genres:</strong> {{ r.genres|join(', ') }}</div>
-                {% endif %}
-                <div class="d-flex justify-content-between">
-                  <span><strong>Year:</strong> {{ r.release_year }}</span>
-                  <span><strong>Price:</strong> {% if r.is_free %}Free{% else %}${{ r.price }}{% endif %}</span>
+
+            <!-- Additional content toggles -->
+            <div class="d-flex flex-wrap gap-1">
+              {% if r.ai_summary %}
+              <button class="btn btn-sm btn-outline-secondary flex-grow-1" type="button" data-bs-toggle="collapse"
+                data-bs-target="#summary-{{ r.appid }}">
+                <i class="bi bi-robot"></i><span class="d-none d-md-inline ms-1">AI Summary</span>
+              </button>
+              {% endif %}
+              {% if current_user.is_authenticated %}
+              <a class="btn btn-sm btn-outline-secondary flex-grow-1 collapse-note-btn d-none" data-bs-toggle="collapse"
+                href="#gameNote-{{ r.appid }}">
+                <i class="bi bi-journal-text"></i><span class="d-none d-md-inline ms-1">Your Notes</span>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Collapsible content sections -->
+          {% if r.ai_summary %}
+          <div class="collapse mt-2" id="summary-{{ r.appid }}">
+            <div class="card card-body small">
+              {{ r.ai_summary|markdown }}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if current_user.is_authenticated %}
+          <div class="collapse mt-2" id="gameNote-{{ r.appid }}">
+            <div class="card card-body small game-note-content">
+              <!-- Note content will be loaded here -->
+              <div class="text-center">
+                <div class="spinner-border spinner-border-sm" role="status">
+                  <span class="visually-hidden">Loading...</span>
                 </div>
-                <div class="d-flex justify-content-between">
-                  <span><strong>Rating:</strong> {{ r.pos_percent|round(0) }}%</span>
-                  <span><strong>Reviews:</strong> {{ r.total_reviews }}</span>
-                </div>
-              </div>
-              
-              <!-- Action buttons at bottom of card -->
-              <div class="mt-auto">
-                <div class="d-flex flex-column gap-2">
-                  <!-- Action buttons row -->
-                  <div class="d-flex gap-1">
-                    <a href="{{ url_for('detail', appid=r.appid) }}" class="btn btn-sm btn-primary flex-grow-1 show-loader">
-                      <i class="bi bi-bar-chart-fill"></i><span class="d-none d-sm-inline ms-1">Analyze</span>
-                    </a>
-                    <a href="https://www.youtube.com/results?search_query={{ r.name|replace(' ', '+') }}+gameplay" 
-                      class="btn btn-sm btn-danger flex-grow-1" target="_blank">
-                      <i class="bi bi-youtube"></i><span class="d-none d-sm-inline ms-1">YouTube</span>
-                    </a>
-                    {% if current_user.is_authenticated %}
-                    <button type="button" class="btn btn-sm btn-info flex-grow-1 game-note-btn" 
-                            data-appid="{{ r.appid }}" data-game-name="{{ r.name }}">
-                      <i class="bi bi-journal-text"></i><span class="d-none d-sm-inline ms-1">Notes</span>
-                    </button>
-                    {% endif %}
-                  </div>
-                  
-                  <!-- Additional content toggles -->
-                  <div class="d-flex flex-wrap gap-1">
-                    {% if r.ai_summary %}
-                    <button class="btn btn-sm btn-outline-secondary flex-grow-1" type="button" 
-                            data-bs-toggle="collapse" data-bs-target="#summary-{{ r.appid }}">
-                      <i class="bi bi-robot"></i><span class="d-none d-md-inline ms-1">AI Summary</span>
-                    </button>
-                    {% endif %}
-                    {% if current_user.is_authenticated %}
-                    <a class="btn btn-sm btn-outline-secondary flex-grow-1 collapse-note-btn d-none" 
-                      data-bs-toggle="collapse" 
-                      href="#gameNote-{{ r.appid }}">
-                      <i class="bi bi-journal-text"></i><span class="d-none d-md-inline ms-1">Your Notes</span>
-                    </a>
-                    {% endif %}
-                  </div>
-                </div>
-                
-                <!-- Collapsible content sections -->
-                {% if r.ai_summary %}
-                <div class="collapse mt-2" id="summary-{{ r.appid }}">
-                  <div class="card card-body small">
-                    {{ r.ai_summary|markdown }}
-                  </div>
-                </div>
-                {% endif %}
-                
-                {% if current_user.is_authenticated %}
-                <div class="collapse mt-2" id="gameNote-{{ r.appid }}">
-                  <div class="card card-body small game-note-content">
-                    <!-- Note content will be loaded here -->
-                    <div class="text-center">
-                      <div class="spinner-border spinner-border-sm" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                      </div>
-                      <p class="small text-muted mb-0">Loading your notes...</p>
-                    </div>
-                  </div>
-                </div>
-                {% endif %}
+                <p class="small text-muted mb-0">Loading your notes...</p>
               </div>
             </div>
           </div>
+          {% endif %}
         </div>
-      {% endfor %}
+      </div>
     </div>
-  {% else %}
-    <!-- Regular full page rendering -->
-  <h1>Search Games</h1>
-    
-    <div class="card mb-4">
-      <div class="card-body">
-  <form method="post" action="{{ url_for('search') }}">
-          <!-- Main search input with icon -->
-          <div class="input-group mb-3">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" name="query" id="searchInput" class="form-control" placeholder="Search for games..." value="{{ query }}">
-            <button type="submit" class="btn btn-primary" id="searchButton">Search</button>
-    </div>
-          
-          <!-- Form submission interception to prevent full reload -->
-          <script>
-            document.addEventListener('DOMContentLoaded', function() {
-              const searchForm = document.querySelector('form');
-              const searchButton = document.getElementById('searchButton');
-              const searchInput = document.getElementById('searchInput');
-              
-              // Intercept form submission for ALL search types
-              searchForm.addEventListener('submit', function(e) {
-                console.log('Form submit intercepted');
-                e.preventDefault(); // Prevent form submission for all search types
-                
-                // Get search type
-                const useAiEnhanced = document.getElementById('useAiEnhanced').checked;
-                const useDeepSearch = document.getElementById('useDeepSearch').checked;
-                
-                // Get query and validate
-                const query = searchInput.value.trim();
-                if (!query) {
-                  console.log('Empty query, not submitting');
-                  return;
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<!-- Regular full page rendering -->
+<h1>Search Games</h1>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('search') }}">
+      <!-- Main search input with icon -->
+      <div class="input-group mb-3">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="query" id="searchInput" class="form-control" placeholder="Search for games..."
+          value="{{ query }}">
+        <button type="submit" class="btn btn-primary" id="searchButton">Search</button>
+      </div>
+
+      <!-- Form submission interception to prevent full reload -->
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const searchForm = document.querySelector('form');
+          const searchButton = document.getElementById('searchButton');
+          const searchInput = document.getElementById('searchInput');
+
+          // Intercept form submission for ALL search types
+          searchForm.addEventListener('submit', function (e) {
+            console.log('Form submit intercepted');
+            e.preventDefault(); // Prevent form submission for all search types
+
+            // Get search type
+            const useAiEnhanced = document.getElementById('useAiEnhanced').checked;
+            const useDeepSearch = document.getElementById('useDeepSearch').checked;
+
+            // Get query and validate
+            const query = searchInput.value.trim();
+            if (!query) {
+              console.log('Empty query, not submitting');
+              return;
+            }
+
+            // Get filter values
+            const genre = document.querySelector('select[name="genre"]').value;
+            const releaseYear = document.querySelector('select[name="release_year"]').value;
+            const platform = document.querySelector('select[name="platform"]').value;
+            const price = document.querySelector('select[name="price"]').value;
+            const sortBy = document.querySelector('select[name="sort_by"]').value;
+            const resultLimit = document.querySelector('select[name="result_limit"]').value;
+
+            // Different handling based on search type
+            if (useDeepSearch) {
+              console.log('Deep Search detected - preserving results while deep search runs');
+
+              // Submit form via AJAX with specific parameters for Deep Search
+              const formData = new FormData(searchForm);
+              formData.append('no_reload', 'true');
+
+              // Show the Deep Search progress bar immediately
+              addDeepSearchProgress();
+
+              // Submit the form data via AJAX
+              fetch('{{ url_for("search") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest'
                 }
-                
-                // Get filter values
-                const genre = document.querySelector('select[name="genre"]').value;
-                const releaseYear = document.querySelector('select[name="release_year"]').value;
-                const platform = document.querySelector('select[name="platform"]').value;
-                const price = document.querySelector('select[name="price"]').value;
-                const sortBy = document.querySelector('select[name="sort_by"]').value;
-                const resultLimit = document.querySelector('select[name="result_limit"]').value;
-                
-                // Different handling based on search type
-                if (useDeepSearch) {
-                  console.log('Deep Search detected - preserving results while deep search runs');
-                  
-                  // Submit form via AJAX with specific parameters for Deep Search
-                  const formData = new FormData(searchForm);
-                  formData.append('no_reload', 'true');
-                  
-                  // Show the Deep Search progress bar immediately
-                  addDeepSearchProgress();
-                  
-                  // Submit the form data via AJAX
-                  fetch('{{ url_for("search") }}', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                      'X-Requested-With': 'XMLHttpRequest'
-                    }
-                  })
-                  .then(response => {
-                    if (!response.ok) {
-                      throw new Error('Deep Search request failed');
-                    }
-                    // For Deep Search, we don't need to process the response
-                    // The frontend will poll for progress and redirect when done
-                    console.log('Deep Search request submitted successfully');
-                  })
-                  .catch(error => {
-                    console.error('Error submitting Deep Search:', error);
-                    // Show error in progress bar
-                    const deepSearchStep = document.getElementById('deepSearchStep');
-                    if (deepSearchStep) {
-                      deepSearchStep.textContent = 'Error starting Deep Search: ' + error.message;
-                    }
-                  });
-                } 
-                else if (useAiEnhanced) {
-                  console.log('AI Enhanced search detected - preserving results while AI search runs');
-                  
-                  // Submit form via AJAX with specific parameters for AI Enhanced
-                  const formData = new FormData(searchForm);
-                  formData.append('no_reload', 'true');
-                  
-                  // Show the AI Enhanced progress bar immediately
-                  addAIEnhancedProgress();
-                  
-                  // Submit the form data via AJAX
-                  fetch('{{ url_for("search") }}', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                      'X-Requested-With': 'XMLHttpRequest'
-                    }
-                  })
-                  .then(response => {
-                    if (!response.ok) {
-                      throw new Error('AI Enhanced search request failed');
-                    }
-                    // For AI Enhanced, we don't need to process the response
-                    // The frontend will poll for progress and redirect when done
-                    console.log('AI Enhanced search request submitted successfully');
-                  })
-                  .catch(error => {
-                    console.error('Error submitting AI Enhanced search:', error);
-                    // Show error in progress bar
-                    const regularSearchStep = document.getElementById('regularSearchStep');
-                    if (regularSearchStep) {
-                      regularSearchStep.textContent = 'Error starting AI Enhanced search: ' + error.message;
-                    }
-                  });
+              })
+                .then(response => {
+                  if (!response.ok) {
+                    throw new Error('Deep Search request failed');
+                  }
+                  // For Deep Search, we don't need to process the response
+                  // The frontend will poll for progress and redirect when done
+                  console.log('Deep Search request submitted successfully');
+                })
+                .catch(error => {
+                  console.error('Error submitting Deep Search:', error);
+                  // Show error in progress bar
+                  const deepSearchStep = document.getElementById('deepSearchStep');
+                  if (deepSearchStep) {
+                    deepSearchStep.textContent = 'Error starting Deep Search: ' + error.message;
+                  }
+                });
+            }
+            else if (useAiEnhanced) {
+              console.log('AI Enhanced search detected - preserving results while AI search runs');
+
+              // Submit form via AJAX with specific parameters for AI Enhanced
+              const formData = new FormData(searchForm);
+              formData.append('no_reload', 'true');
+
+              // Show the AI Enhanced progress bar immediately
+              addAIEnhancedProgress();
+
+              // Submit the form data via AJAX
+              fetch('{{ url_for("search") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest'
                 }
-                else {
-                  console.log('Standard search detected - using AJAX to update results in place');
-                  
-                  // Build the search URL
-                  const params = new URLSearchParams();
-                  params.append('q', query);
-                  params.append('genre', genre);
-                  params.append('release_year', releaseYear);
-                  params.append('platform', platform);
-                  params.append('price', price);
-                  params.append('sort_by', sortBy);
-                  params.append('result_limit', resultLimit);
-                  params.append('use_ai_enhanced', 'false');
-                  params.append('use_deep_search', 'false');
-                  params.append('no_reload', 'true'); // Special flag to indicate AJAX
-                  
-                  // Show a progress section for standard search
-                  addStandardSearchProgress();
-                  
-                  // Perform AJAX search
-                  fetchSearchResults(params);
-                }
-              });
-              
-              // Function to add a progress section for standard search
-              function addStandardSearchProgress() {
-                // Remove any existing progress section
-                const existingProgress = document.getElementById('standardSearchProgress');
-                if (existingProgress) {
-                  existingProgress.remove();
-                }
-                
-                // Create a new progress section
-                const progressHTML = `
+              })
+                .then(response => {
+                  if (!response.ok) {
+                    throw new Error('AI Enhanced search request failed');
+                  }
+                  // For AI Enhanced, we don't need to process the response
+                  // The frontend will poll for progress and redirect when done
+                  console.log('AI Enhanced search request submitted successfully');
+                })
+                .catch(error => {
+                  console.error('Error submitting AI Enhanced search:', error);
+                  // Show error in progress bar
+                  const regularSearchStep = document.getElementById('regularSearchStep');
+                  if (regularSearchStep) {
+                    regularSearchStep.textContent = 'Error starting AI Enhanced search: ' + error.message;
+                  }
+                });
+            }
+            else {
+              console.log('Standard search detected - using AJAX to update results in place');
+
+              // Build the search URL
+              const params = new URLSearchParams();
+              params.append('q', query);
+              params.append('genre', genre);
+              params.append('release_year', releaseYear);
+              params.append('platform', platform);
+              params.append('price', price);
+              params.append('sort_by', sortBy);
+              params.append('result_limit', resultLimit);
+              params.append('use_ai_enhanced', 'false');
+              params.append('use_deep_search', 'false');
+              params.append('no_reload', 'true'); // Special flag to indicate AJAX
+              params.append('template', 'results_only'); // Special flag to indicate AJAX and partial template
+
+              // Show a progress section for standard search
+              addStandardSearchProgress();
+
+              // Perform AJAX search
+              fetchSearchResults(params);
+            }
+          });
+
+          // Function to add a progress section for standard search
+          function addStandardSearchProgress() {
+            // Remove any existing progress section
+            const existingProgress = document.getElementById('standardSearchProgress');
+            if (existingProgress) {
+              existingProgress.remove();
+            }
+
+            // Create a new progress section
+            const progressHTML = `
                 <div id="standardSearchProgress" class="alert alert-info mb-3">
                   <div class="d-flex justify-content-between">
                     <strong>Search in progress</strong>
@@ -295,19 +300,19 @@
                   </div>
                   <div id="standardSearchStep" class="mt-2 small">Starting search...</div>
                 </div>`;
-                
-                // Add it after the filters
-                const advancedFilters = document.getElementById('advancedFilters');
-                advancedFilters.insertAdjacentHTML('afterend', progressHTML);
-              }
-              
-              // Function to add Deep Search progress bar
-              function addDeepSearchProgress() {
-                // Remove any existing progress bars
-                removeAllProgressBars();
-                
-                // Create Deep Search progress HTML
-                const progressHTML = `
+
+            // Add it after the filters
+            const advancedFilters = document.getElementById('advancedFilters');
+            advancedFilters.insertAdjacentHTML('afterend', progressHTML);
+          }
+
+          // Function to add Deep Search progress bar
+          function addDeepSearchProgress() {
+            // Remove any existing progress bars
+            removeAllProgressBars();
+
+            // Create Deep Search progress HTML
+            const progressHTML = `
                 <div id="deepSearchProgress" class="alert alert-info mb-3">
                   <div class="d-flex justify-content-between">
                     <strong>Deep Search in progress</strong>
@@ -318,22 +323,22 @@
                   </div>
                   <div id="deepSearchStep" class="mt-2 small">Please wait while we find the best results for you...</div>
                 </div>`;
-                
-                // Add it after the filters
-                const advancedFilters = document.getElementById('advancedFilters');
-                advancedFilters.insertAdjacentHTML('afterend', progressHTML);
-                
-                // Start the Deep Search polling
-                startDeepSearchPolling();
-              }
-              
-              // Function to add AI Enhanced progress bar
-              function addAIEnhancedProgress() {
-                // Remove any existing progress bars
-                removeAllProgressBars();
-                
-                // Create AI Enhanced progress HTML
-                const progressHTML = `
+
+            // Add it after the filters
+            const advancedFilters = document.getElementById('advancedFilters');
+            advancedFilters.insertAdjacentHTML('afterend', progressHTML);
+
+            // Start the Deep Search polling
+            startDeepSearchPolling();
+          }
+
+          // Function to add AI Enhanced progress bar
+          function addAIEnhancedProgress() {
+            // Remove any existing progress bars
+            removeAllProgressBars();
+
+            // Create AI Enhanced progress HTML
+            const progressHTML = `
                 <div id="regularSearchProgress" class="alert alert-info mb-3">
                   <div class="d-flex justify-content-between">
                     <strong>AI Enhanced search in progress</strong>
@@ -344,1083 +349,1122 @@
                   </div>
                   <div id="regularSearchStep" class="mt-2 small">Please wait while we optimize your search...</div>
                 </div>`;
-                
-                // Add it after the filters
-                const advancedFilters = document.getElementById('advancedFilters');
-                advancedFilters.insertAdjacentHTML('afterend', progressHTML);
-                
-                // Start the regular search polling
-                startRegularSearchPolling();
+
+            // Add it after the filters
+            const advancedFilters = document.getElementById('advancedFilters');
+            advancedFilters.insertAdjacentHTML('afterend', progressHTML);
+
+            // Start the regular search polling
+            startRegularSearchPolling();
+          }
+
+          // Remove all progress bars
+          function removeAllProgressBars() {
+            const progressBars = [
+              document.getElementById('standardSearchProgress'),
+              document.getElementById('regularSearchProgress'),
+              document.getElementById('deepSearchProgress')
+            ];
+
+            for (const bar of progressBars) {
+              if (bar) bar.remove();
+            }
+          }
+
+          // Deep Search polling function
+          function startDeepSearchPolling() {
+            const progressBar = document.getElementById('progressBar');
+            const progressStatus = document.getElementById('progressStatus');
+            const deepSearchStep = document.getElementById('deepSearchStep');
+            const deepSearchProgress = document.getElementById('deepSearchProgress');
+
+            let pollCount = 0;
+            let isCompleted = false;
+
+            // Function to update the UI with the latest status
+            function updateProgressUI(data) {
+              // Update progress bar
+              const progress = data.progress || 0;
+              progressBar.style.width = `${progress}%`;
+
+              // Update status text
+              if (data.current_step) {
+                deepSearchStep.textContent = data.current_step;
               }
-              
-              // Remove all progress bars
-              function removeAllProgressBars() {
-                const progressBars = [
-                  document.getElementById('standardSearchProgress'),
-                  document.getElementById('regularSearchProgress'),
-                  document.getElementById('deepSearchProgress')
-                ];
-                
-                for (const bar of progressBars) {
-                  if (bar) bar.remove();
+
+              // Update progress percentage in the status
+              progressStatus.textContent = `${progress}%`;
+
+              // If search is complete or has an error, handle accordingly
+              if (data.completed || data.error) {
+                isCompleted = true;
+
+                if (data.ready_for_viewing) {
+                  // If results are ready to view, redirect to see them
+                  deepSearchStep.textContent = "Search complete! Redirecting to results...";
+                  progressBar.classList.remove('progress-bar-animated');
+                  progressStatus.textContent = "100%";
+                  progressBar.style.width = "100%";
+
+                  // Change alert color to success
+                  deepSearchProgress.classList.remove('alert-info');
+                  deepSearchProgress.classList.add('alert-success');
+
+                  // Redirect after a short delay to see results
+                  setTimeout(() => {
+                    // Add all current search parameters to the URL
+                    const params = new URLSearchParams();
+                    params.append('q', searchInput.value.trim());
+                    params.append('view_results', 'true');
+                    params.append('genre', document.querySelector('select[name="genre"]').value);
+                    params.append('release_year', document.querySelector('select[name="release_year"]').value);
+                    params.append('platform', document.querySelector('select[name="platform"]').value);
+                    params.append('price', document.querySelector('select[name="price"]').value);
+                    params.append('sort_by', document.querySelector('select[name="sort_by"]').value);
+                    params.append('result_limit', document.querySelector('select[name="result_limit"]').value);
+                    params.append('use_deep_search', 'true');
+
+                    // Redirect to the results page
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                  }, 1500);
+
+                  return false; // Stop polling
+                }
+
+                if (data.error) {
+                  // Show error message
+                  deepSearchStep.textContent = `Error: ${data.error}`;
+                  deepSearchProgress.classList.remove('alert-info');
+                  deepSearchProgress.classList.add('alert-danger');
+                  progressBar.classList.remove('progress-bar-animated');
+                  return false; // Stop polling
                 }
               }
-              
-              // Deep Search polling function
-              function startDeepSearchPolling() {
-                const progressBar = document.getElementById('progressBar');
-                const progressStatus = document.getElementById('progressStatus');
-                const deepSearchStep = document.getElementById('deepSearchStep');
-                const deepSearchProgress = document.getElementById('deepSearchProgress');
-                
-                let pollCount = 0;
-                let isCompleted = false;
-                
-                // Function to update the UI with the latest status
-                function updateProgressUI(data) {
-                  // Update progress bar
-                  const progress = data.progress || 0;
-                  progressBar.style.width = `${progress}%`;
-                  
-                  // Update status text
-                  if (data.current_step) {
-                    deepSearchStep.textContent = data.current_step;
-                  }
-                  
-                  // Update progress percentage in the status
-                  progressStatus.textContent = `${progress}%`;
-                  
-                  // If search is complete or has an error, handle accordingly
-                  if (data.completed || data.error) {
-                    isCompleted = true;
-                    
-                    if (data.ready_for_viewing) {
-                      // If results are ready to view, redirect to see them
-                      deepSearchStep.textContent = "Search complete! Redirecting to results...";
-                      progressBar.classList.remove('progress-bar-animated');
-                      progressStatus.textContent = "100%";
-                      progressBar.style.width = "100%";
-                      
-                      // Change alert color to success
-                      deepSearchProgress.classList.remove('alert-info');
-                      deepSearchProgress.classList.add('alert-success');
-                      
-                      // Redirect after a short delay to see results
-                      setTimeout(() => {
-                        // Add all current search parameters to the URL
-                        const params = new URLSearchParams();
-                        params.append('q', searchInput.value.trim());
-                        params.append('view_results', 'true');
-                        params.append('genre', document.querySelector('select[name="genre"]').value);
-                        params.append('release_year', document.querySelector('select[name="release_year"]').value);
-                        params.append('platform', document.querySelector('select[name="platform"]').value);
-                        params.append('price', document.querySelector('select[name="price"]').value);
-                        params.append('sort_by', document.querySelector('select[name="sort_by"]').value);
-                        params.append('result_limit', document.querySelector('select[name="result_limit"]').value);
-                        params.append('use_deep_search', 'true');
-                        
-                        // Redirect to the results page
-                        window.location.href = window.location.pathname + '?' + params.toString();
-                      }, 1500);
-                      
-                      return false; // Stop polling
-                    }
-                    
-                    if (data.error) {
-                      // Show error message
-                      deepSearchStep.textContent = `Error: ${data.error}`;
-                      deepSearchProgress.classList.remove('alert-info');
-                      deepSearchProgress.classList.add('alert-danger');
-                      progressBar.classList.remove('progress-bar-animated');
-                      return false; // Stop polling
-                    }
-                  }
-                  
-                  return true; // Continue polling
-                }
-                
-                // Function to poll for status updates
-                function pollDeepSearchStatus() {
-                  if (isCompleted) {
-                    console.log('Deep Search polling stopped because search is completed');
-                    return; // Don't continue polling if already completed
-                  }
-                  
-                  fetch('/deep_search_status')
-                    .then(response => response.json())
-                    .then(data => {
-                      console.log('Deep Search Status Update:', data);
-                      const shouldContinue = updateProgressUI(data);
-                      
-                      // Determine if we should continue polling
-                      if (shouldContinue && !isCompleted) {
-                        // Adjust polling frequency based on progress
-                        // Poll more frequently at the beginning, less frequently as we progress
-                        const baseDelay = 1000; // 1 second base delay
-                        const progress = data.progress || 0;
-                        
-                        // Increase delay as progress increases (max ~3 seconds when near completion)
-                        const delay = baseDelay + (progress * 20);
-                        
-                        setTimeout(pollDeepSearchStatus, delay);
-                        pollCount++;
-                      } else {
-                        console.log('Deep Search polling stopped, shouldContinue:', shouldContinue, 'isCompleted:', isCompleted);
-                      }
-                    })
-                    .catch(error => {
-                      console.error('Error polling for deep search status:', error);
-                      // Continue polling despite errors, but less frequently
-                      if (!isCompleted) {
-                        setTimeout(pollDeepSearchStatus, 3000);
-                      }
-                    });
-                }
-                
-                // Start polling immediately
-                pollDeepSearchStatus();
+
+              return true; // Continue polling
+            }
+
+            // Function to poll for status updates
+            function pollDeepSearchStatus() {
+              if (isCompleted) {
+                console.log('Deep Search polling stopped because search is completed');
+                return; // Don't continue polling if already completed
               }
-              
-              // Regular search polling function
-              function startRegularSearchPolling() {
-                const progressBar = document.getElementById('regularProgressBar');
-                const progressStatus = document.getElementById('regularProgressStatus');
-                const searchStep = document.getElementById('regularSearchStep');
-                const searchProgress = document.getElementById('regularSearchProgress');
-                
-                let pollCount = 0;
-                let isCompleted = false;
-                
-                // Function to update the UI with the latest status
-                function updateProgressUI(data) {
-                  // Update progress bar
-                  const progress = data.progress || 0;
-                  progressBar.style.width = `${progress}%`;
-                  
-                  // Update status text
-                  if (data.current_step) {
-                    searchStep.textContent = data.current_step;
-                  }
-                  
-                  // Update progress percentage in the status
-                  progressStatus.textContent = `${progress}%`;
-                  
-                  // If search is complete or has an error, handle accordingly
-                  if (data.completed || data.error) {
-                    isCompleted = true;
-                    
-                    if (data.error) {
-                      // Show error message
-                      searchStep.textContent = `Error: ${data.error}`;
-                      searchProgress.classList.remove('alert-info');
-                      searchProgress.classList.add('alert-danger');
-                      progressBar.classList.remove('progress-bar-animated');
-                      return false; // Stop polling
-                    } else {
-                      // Search completed successfully, redirect to see results
-                      searchStep.textContent = "Search complete! Loading results...";
-                      progressBar.classList.remove('progress-bar-animated');
-                      progressStatus.textContent = "100%";
-                      progressBar.style.width = "100%";
-                      
-                      // Change alert color to success
-                      searchProgress.classList.remove('alert-info');
-                      searchProgress.classList.add('alert-success');
-                      
-                      // Reload page to show results after a short delay
-                      setTimeout(() => {
-                        // Add all current search parameters to the URL
-                        const params = new URLSearchParams();
-                        params.append('q', searchInput.value.trim());
-                        params.append('genre', document.querySelector('select[name="genre"]').value);
-                        params.append('release_year', document.querySelector('select[name="release_year"]').value);
-                        params.append('platform', document.querySelector('select[name="platform"]').value);
-                        params.append('price', document.querySelector('select[name="price"]').value);
-                        params.append('sort_by', document.querySelector('select[name="sort_by"]').value);
-                        params.append('result_limit', document.querySelector('select[name="result_limit"]').value);
-                        params.append('use_ai_enhanced', 'true');
-                        params.append('use_deep_search', 'false');
-                        params.append('view_results', 'true');
-                        
-                        // Reload page to show results
-                        window.location.href = window.location.pathname + '?' + params.toString();
-                      }, 1500);
-                      
-                      return false; // Stop polling
-                    }
-                  }
-                  
-                  return true; // Continue polling
-                }
-                
-                // Function to poll for status updates
-                function pollSearchStatus() {
-                  if (isCompleted) {
-                    console.log('Polling stopped because search is completed');
-                    return; // Don't continue polling if already completed
-                  }
-                  
-                  fetch('/search_status')
-                    .then(response => response.json())
-                    .then(data => {
-                      console.log('Search Status Update:', data);
-                      const shouldContinue = updateProgressUI(data);
-                      
-                      // Determine if we should continue polling
-                      if (shouldContinue && !isCompleted) {
-                        // Adjust polling frequency based on progress
-                        // Poll more frequently at the beginning, less frequently as we progress
-                        const baseDelay = 800; // Base delay in milliseconds
-                        const progress = data.progress || 0;
-                        
-                        // Increase delay as progress increases (max ~2.5 seconds when near completion)
-                        const delay = baseDelay + (progress * 15);
-                        
-                        setTimeout(pollSearchStatus, delay);
-                        pollCount++;
-                      } else {
-                        console.log('Polling stopped, shouldContinue:', shouldContinue, 'isCompleted:', isCompleted);
-                      }
-                    })
-                    .catch(error => {
-                      console.error('Error polling for search status:', error);
-                      // Continue polling despite errors, but less frequently
-                      if (!isCompleted) {
-                        setTimeout(pollSearchStatus, 3000);
-                      }
-                    });
-                }
-                
-                // Start polling immediately
-                pollSearchStatus();
-              }
-              
-              // Function to fetch search results via AJAX for regular search
-              function fetchSearchResults(params) {
-                console.log('Fetching search results with params:', Object.fromEntries(params));
-                
-                // Update progress
-                const progressBar = document.getElementById('standardProgressBar');
-                const progressStatus = document.getElementById('standardProgressStatus');
-                const progressStep = document.getElementById('standardSearchStep');
-                
-                // Update progress to 50%
-                progressBar.style.width = '50%';
-                progressStatus.textContent = '50%';
-                progressStep.textContent = 'Searching for games...';
-                
-                // Fetch results
-                fetch('/?' + params.toString(), {
-                  headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+
+              fetch('/deep_search_status')
+                .then(response => response.json())
+                .then(data => {
+                  console.log('Deep Search Status Update:', data);
+                  const shouldContinue = updateProgressUI(data);
+
+                  // Determine if we should continue polling
+                  if (shouldContinue && !isCompleted) {
+                    // Adjust polling frequency based on progress
+                    // Poll more frequently at the beginning, less frequently as we progress
+                    const baseDelay = 1000; // 1 second base delay
+                    const progress = data.progress || 0;
+
+                    // Increase delay as progress increases (max ~3 seconds when near completion)
+                    const delay = baseDelay + (progress * 20);
+
+                    setTimeout(pollDeepSearchStatus, delay);
+                    pollCount++;
+                  } else {
+                    console.log('Deep Search polling stopped, shouldContinue:', shouldContinue, 'isCompleted:', isCompleted);
                   }
                 })
-                .then(response => {
-                  if (!response.ok) {
-                    throw new Error('Search request failed');
+                .catch(error => {
+                  console.error('Error polling for deep search status:', error);
+                  // Continue polling despite errors, but less frequently
+                  if (!isCompleted) {
+                    setTimeout(pollDeepSearchStatus, 3000);
                   }
-                  return response.text();
+                });
+            }
+
+            // Start polling immediately
+            pollDeepSearchStatus();
+          }
+
+          // Regular search polling function
+          function startRegularSearchPolling() {
+            const progressBar = document.getElementById('regularProgressBar');
+            const progressStatus = document.getElementById('regularProgressStatus');
+            const searchStep = document.getElementById('regularSearchStep');
+            const searchProgress = document.getElementById('regularSearchProgress');
+
+            let pollCount = 0;
+            let isCompleted = false;
+
+            // Function to update the UI with the latest status
+            function updateProgressUI(data) {
+              // Update progress bar
+              const progress = data.progress || 0;
+              progressBar.style.width = `${progress}%`;
+
+              // Update status text
+              if (data.current_step) {
+                searchStep.textContent = data.current_step;
+              }
+
+              // Update progress percentage in the status
+              progressStatus.textContent = `${progress}%`;
+
+              // If search is complete or has an error, handle accordingly
+              if (data.completed || data.error) {
+                isCompleted = true;
+
+                if (data.error) {
+                  // Show error message
+                  searchStep.textContent = `Error: ${data.error}`;
+                  searchProgress.classList.remove('alert-info');
+                  searchProgress.classList.add('alert-danger');
+                  progressBar.classList.remove('progress-bar-animated');
+                  return false; // Stop polling
+                } else {
+                  // Search completed successfully, redirect to see results
+                  searchStep.textContent = "Search complete! Loading results...";
+                  progressBar.classList.remove('progress-bar-animated');
+                  progressStatus.textContent = "100%";
+                  progressBar.style.width = "100%";
+
+                  // Change alert color to success
+                  searchProgress.classList.remove('alert-info');
+                  searchProgress.classList.add('alert-success');
+
+                  // Reload page to show results after a short delay
+                  setTimeout(() => {
+                    // Add all current search parameters to the URL
+                    const params = new URLSearchParams();
+                    params.append('q', searchInput.value.trim());
+                    params.append('genre', document.querySelector('select[name="genre"]').value);
+                    params.append('release_year', document.querySelector('select[name="release_year"]').value);
+                    params.append('platform', document.querySelector('select[name="platform"]').value);
+                    params.append('price', document.querySelector('select[name="price"]').value);
+                    params.append('sort_by', document.querySelector('select[name="sort_by"]').value);
+                    params.append('result_limit', document.querySelector('select[name="result_limit"]').value);
+                    params.append('use_ai_enhanced', 'true');
+                    params.append('use_deep_search', 'false');
+                    params.append('view_results', 'true');
+
+                    // Reload page to show results
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                  }, 1500);
+
+                  return false; // Stop polling
+                }
+              }
+
+              return true; // Continue polling
+            }
+
+            // Function to poll for status updates
+            function pollSearchStatus() {
+              if (isCompleted) {
+                console.log('Polling stopped because search is completed');
+                return; // Don't continue polling if already completed
+              }
+
+              fetch('/search_status')
+                .then(response => response.json())
+                .then(data => {
+                  console.log('Search Status Update:', data);
+                  const shouldContinue = updateProgressUI(data);
+
+                  // Determine if we should continue polling
+                  if (shouldContinue && !isCompleted) {
+                    // Adjust polling frequency based on progress
+                    // Poll more frequently at the beginning, less frequently as we progress
+                    const baseDelay = 800; // Base delay in milliseconds
+                    const progress = data.progress || 0;
+
+                    // Increase delay as progress increases (max ~2.5 seconds when near completion)
+                    const delay = baseDelay + (progress * 15);
+
+                    setTimeout(pollSearchStatus, delay);
+                    pollCount++;
+                  } else {
+                    console.log('Polling stopped, shouldContinue:', shouldContinue, 'isCompleted:', isCompleted);
+                  }
                 })
-                .then(html => {
-                  console.log('Search results received, length:', html.length);
-                  
-                  // Update progress to 90%
-                  progressBar.style.width = '90%';
-                  progressStatus.textContent = '90%';
-                  progressStep.textContent = 'Processing results...';
-                  
-                  // Extract the results section from the HTML response
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(html, 'text/html');
-                  const resultsSection = doc.querySelector('.row.row-cols-1.row-cols-md-2.g-3');
-                  
-                  if (resultsSection) {
-                    console.log('Found results section, updating UI');
-                    
-                    // Add "Previous search results" notice before showing new results
-                    const existingAlert = document.querySelector('.alert-secondary:not(#standardSearchProgress)');
-                    if (existingAlert) {
-                      existingAlert.remove();
-                    }
-                    
-                    // Get count of results
-                    const resultCount = resultsSection.querySelectorAll('.col').length;
-                    
-                    // Find or create the results container
-                    let resultsContainer = document.querySelector('.row.row-cols-1.row-cols-md-2.g-3');
-                    let resultsHeader = document.querySelector('.d-flex.justify-content-between.align-items-center.mb-3.flex-wrap.gap-2');
-                    
-                    if (!resultsContainer) {
-                      console.log('No existing results container, creating one');
-                      // If no results container exists yet, create the whole section
-                      const resultsHTML = `
+                .catch(error => {
+                  console.error('Error polling for search status:', error);
+                  // Continue polling despite errors, but less frequently
+                  if (!isCompleted) {
+                    setTimeout(pollSearchStatus, 3000);
+                  }
+                });
+            }
+
+            // Start polling immediately
+            pollSearchStatus();
+          }
+
+          // Function to fetch search results via AJAX for regular search
+          function fetchSearchResults(params) {
+            console.log('Fetching search results with params:', Object.fromEntries(params));
+
+            // Update progress
+            const progressBar = document.getElementById('standardProgressBar');
+            const progressStatus = document.getElementById('standardProgressStatus');
+            const progressStep = document.getElementById('standardSearchStep');
+
+            // Update progress to 50%
+            progressBar.style.width = '50%';
+            progressStatus.textContent = '50%';
+            progressStep.textContent = 'Searching for games...';
+
+            // Fetch results
+            fetch('/?' + params.toString(), {
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+              }
+            })
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('Search request failed');
+                }
+                return response.text();
+              })
+              .then(html => {
+                console.log('Search results received, length:', html.length);
+
+                // Update progress to 90%
+                progressBar.style.width = '90%';
+                progressStatus.textContent = '90%';
+                progressStep.textContent = 'Processing results...';
+
+                // Extract the results section from the HTML response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const resultsSection = doc.querySelector('.row.row-cols-1.row-cols-md-2.g-3');
+
+                if (resultsSection) {
+                  console.log('Found results section, updating UI');
+
+                  // Add "Previous search results" notice before showing new results
+                  const existingAlert = document.querySelector('.alert-secondary:not(#standardSearchProgress)');
+                  if (existingAlert) {
+                    existingAlert.remove();
+                  }
+
+                  // Get count of results
+                  const resultCount = resultsSection.querySelectorAll('.col').length;
+
+                  // Remove empty results placeholder if exists
+                  const emptyPlaceholder = document.getElementById('emptyResultsPlaceholder');
+                  if (emptyPlaceholder) {
+                    emptyPlaceholder.remove();
+                  }
+
+                  // Find or create the results container
+                  let resultsContainer = document.querySelector('.row.row-cols-1.row-cols-md-2.g-3:not(#emptyResultsPlaceholder)');
+                  let resultsHeader = document.querySelector('.d-flex.justify-content-between.align-items-center.mb-3.flex-wrap.gap-2');
+
+                  if (!resultsContainer) {
+                    console.log('No existing results container, creating one');
+                    // If no results container exists yet, create the whole section
+                    const resultsHTML = `
                       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <h2 class="mb-0">Search Results (${resultCount})</h2>
                       </div>
-                      <div class="row row-cols-1 row-cols-md-2 g-3"></div>`;
-                      
-                      const searchCard = document.querySelector('.card.mb-4');
-                      searchCard.insertAdjacentHTML('afterend', resultsHTML);
-                      
-                      resultsContainer = document.querySelector('.row.row-cols-1.row-cols-md-2.g-3');
-                      resultsHeader = document.querySelector('.d-flex.justify-content-between.align-items-center.mb-3.flex-wrap.gap-2');
-                    } else {
-                      // Update the results count in the header
+                      <div class="row row-cols-1 row-cols-md-2 g-3 justify-content-center"></div>`;
+
+                    const searchCard = document.querySelector('.card.mb-4');
+                    searchCard.insertAdjacentHTML('afterend', resultsHTML);
+
+                    resultsContainer = document.querySelector('.row.row-cols-1.row-cols-md-2.g-3');
+                    resultsHeader = document.querySelector('.d-flex.justify-content-between.align-items-center.mb-3.flex-wrap.gap-2');
+                  } else {
+                    // Update the results count in the header
+                    if (resultsHeader) {
                       const resultsCountElement = resultsHeader.querySelector('h2');
                       if (resultsCountElement) {
                         resultsCountElement.textContent = `Search Results (${resultCount})`;
                       }
+                    } else {
+                      // No header exists, create one
+                      const headerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                          <h2 class="mb-0">Search Results (${resultCount})</h2>
+                        </div>`;
+                      resultsContainer.insertAdjacentHTML('beforebegin', headerHTML);
                     }
-                    
-                    // Update the results container with new content
-                    resultsContainer.innerHTML = resultsSection.innerHTML;
-                    
-                    // Finalize progress
-                    progressBar.style.width = '100%';
-                    progressStatus.textContent = '100%';
-                    progressStep.textContent = 'Search completed';
-                    
-                    // Remove progress bar after delay or transform it to success
-                    setTimeout(() => {
-                      const progress = document.getElementById('standardSearchProgress');
-                      if (progress) {
-                        progress.classList.remove('alert-info');
-                        progress.classList.add('alert-success');
-                        
-                        // Remove it after another delay
-                        setTimeout(() => {
-                          if (progress && progress.parentNode) {
-                            progress.parentNode.removeChild(progress);
-                          }
-                        }, 1500);
-                      }
-                    }, 500);
-                    
-                    // Initialize any JS for the new content
-                    initializeNewContent();
-                  } else {
-                    console.error('Could not find results section in response');
-                    // Show error in progress bar
-                    progressBar.classList.remove('progress-bar-animated');
-                    progressBar.classList.add('bg-danger');
-                    progressStatus.textContent = 'Error';
-                    progressStep.textContent = 'Could not load search results';
                   }
-                })
-                .catch(error => {
-                  console.error('Error fetching search results:', error);
+
+                  // Update the results container with new content
+                  resultsContainer.innerHTML = resultsSection.innerHTML;
+                  // Ensure centering class is present
+                  if (!resultsContainer.classList.contains('justify-content-center')) {
+                    resultsContainer.classList.add('justify-content-center');
+                  }
+
+                  // Finalize progress
+                  progressBar.style.width = '100%';
+                  progressStatus.textContent = '100%';
+                  progressStep.textContent = 'Search completed';
+
+                  // Remove progress bar after delay or transform it to success
+                  setTimeout(() => {
+                    const progress = document.getElementById('standardSearchProgress');
+                    if (progress) {
+                      progress.classList.remove('alert-info');
+                      progress.classList.add('alert-success');
+
+                      // Remove it after another delay
+                      setTimeout(() => {
+                        if (progress && progress.parentNode) {
+                          progress.parentNode.removeChild(progress);
+                        }
+                      }, 1500);
+                    }
+                  }, 500);
+
+                  // Initialize any JS for the new content
+                  initializeNewContent();
+                } else {
+                  console.error('Could not find results section in response');
                   // Show error in progress bar
                   progressBar.classList.remove('progress-bar-animated');
                   progressBar.classList.add('bg-danger');
                   progressStatus.textContent = 'Error';
-                  progressStep.textContent = error.message;
-                });
-              }
-              
-              // Function to initialize JS for new content
-              function initializeNewContent() {
-                // Initialize carousels
-                document.querySelectorAll('.carousel').forEach(carousel => {
-                  new bootstrap.Carousel(carousel);
-                });
-                
-                // Set up any click handlers needed for the new elements
-                // This will depend on what functionality you need to re-initialize
-                
-                // Initialize note buttons
-                document.querySelectorAll('.game-note-btn').forEach(button => {
-                  button.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    
-                    const appid = this.getAttribute('data-appid');
-                    const gameName = this.getAttribute('data-game-name');
-                    
-                    // Open the note modal
-                    const modal = document.getElementById('gameNoteModal');
-                    if (modal) {
-                      const modalTitle = document.getElementById('gameNoteModalLabel');
-                      const appIdInput = document.getElementById('gameNoteAppId');
-                      
-                      modalTitle.textContent = `Notes for ${gameName}`;
-                      appIdInput.value = appid;
-                      
-                      // Show the modal
-                      const bsModal = new bootstrap.Modal(modal);
-                      bsModal.show();
-                      
-                      // Load existing note
-                      fetch(`/api/game_note/${appid}`)
-                        .then(response => response.json())
-                        .then(data => {
-                          if (data.success) {
-                            document.getElementById('gameNoteText').value = data.note;
-                            document.getElementById('deleteNoteBtn').style.display = data.note ? 'block' : 'none';
-                          }
-                        });
-                    }
-                  });
-                });
-                
-                // Load notes for all games
-                document.querySelectorAll('.game-note-btn').forEach(button => {
-                  const appid = button.getAttribute('data-appid');
-                  
+                  progressStep.textContent = 'Could not load search results';
+                }
+              })
+              .catch(error => {
+                console.error('Error fetching search results:', error);
+                // Show error in progress bar
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                progressStatus.textContent = 'Error';
+                progressStep.textContent = error.message;
+              });
+          }
+
+          // Function to initialize JS for new content
+          function initializeNewContent() {
+            // Initialize carousels
+            document.querySelectorAll('.carousel').forEach(carousel => {
+              new bootstrap.Carousel(carousel);
+            });
+
+            // Set up any click handlers needed for the new elements
+            // This will depend on what functionality you need to re-initialize
+
+            // Initialize note buttons
+            document.querySelectorAll('.game-note-btn').forEach(button => {
+              button.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                const appid = this.getAttribute('data-appid');
+                const gameName = this.getAttribute('data-game-name');
+
+                // Open the note modal
+                const modal = document.getElementById('gameNoteModal');
+                if (modal) {
+                  const modalTitle = document.getElementById('gameNoteModalLabel');
+                  const appIdInput = document.getElementById('gameNoteAppId');
+
+                  modalTitle.textContent = `Notes for ${gameName}`;
+                  appIdInput.value = appid;
+
+                  // Show the modal
+                  const bsModal = new bootstrap.Modal(modal);
+                  bsModal.show();
+
+                  // Load existing note
                   fetch(`/api/game_note/${appid}`)
                     .then(response => response.json())
                     .then(data => {
-                      if (data.success && data.note) {
-                        // If there's a note, show the collapse button
-                        const collapseBtn = document.querySelector(`.collapse-note-btn[href="#gameNote-${appid}"]`);
-                        if (collapseBtn) {
-                          collapseBtn.classList.remove('d-none');
-                        }
+                      if (data.success) {
+                        document.getElementById('gameNoteText').value = data.note;
+                        document.getElementById('deleteNoteBtn').style.display = data.note ? 'block' : 'none';
                       }
                     });
-                });
-              }
-              
-              // Remove full-screen loader if it exists
-              const loaderOverlay = document.getElementById('loader-overlay');
-              if (loaderOverlay) {
-                loaderOverlay.style.display = 'none';
-              }
+                }
+              });
             });
-          </script>
-          
-          <!-- Collapsible advanced filters -->
-          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
-            <a class="btn btn-sm btn-outline-secondary mt-1 mb-1" data-bs-toggle="collapse" href="#advancedFilters">
-              <i class="bi bi-sliders"></i> <span class="d-none d-sm-inline">Filters & Options</span><span class="d-inline d-sm-none">Filters</span>
-            </a>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <div class="form-check form-switch me-3">
-                <input class="form-check-input" type="checkbox" id="useAiEnhanced" name="use_ai_enhanced" value="true" 
-                      {% if use_ai_enhanced %}checked{% endif %} 
-                      onchange="document.getElementById('useDeepSearch').checked = false;">
-                <label class="form-check-label" for="useAiEnhanced">AI Enhanced</label>
-              </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="useDeepSearch" name="use_deep_search" value="true" 
-                      {% if use_deep_search %}checked{% endif %}
-                      onchange="document.getElementById('useAiEnhanced').checked = false;">
-                <label class="form-check-label" for="useDeepSearch">Deep Search</label>
-              </div>
-            </div>
+
+            // Load notes for all games
+            document.querySelectorAll('.game-note-btn').forEach(button => {
+              const appid = button.getAttribute('data-appid');
+
+              fetch(`/api/game_note/${appid}`)
+                .then(response => response.json())
+                .then(data => {
+                  if (data.success && data.note) {
+                    // If there's a note, show the collapse button
+                    const collapseBtn = document.querySelector(`.collapse-note-btn[href="#gameNote-${appid}"]`);
+                    if (collapseBtn) {
+                      collapseBtn.classList.remove('d-none');
+                    }
+                  }
+                });
+            });
+          }
+
+          // Remove full-screen loader if it exists
+          const loaderOverlay = document.getElementById('loader-overlay');
+          if (loaderOverlay) {
+            loaderOverlay.style.display = 'none';
+          }
+        });
+      </script>
+
+      <!-- Collapsible advanced filters -->
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
+        <a class="btn btn-sm btn-outline-secondary mt-1 mb-1" data-bs-toggle="collapse" href="#advancedFilters">
+          <i class="bi bi-sliders"></i> <span class="d-none d-sm-inline">Filters & Options</span><span
+            class="d-inline d-sm-none">Filters</span>
+        </a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="form-check form-switch me-3">
+            <input class="form-check-input" type="checkbox" id="useAiEnhanced" name="use_ai_enhanced" value="true" {% if
+              use_ai_enhanced %}checked{% endif %} onchange="document.getElementById('useDeepSearch').checked = false;">
+            <label class="form-check-label" for="useAiEnhanced">AI Enhanced</label>
           </div>
-          
-          <!-- Regular Search Progress (shown when a regular or AI Enhanced search is active) -->
-          {% if regular_search_active %}
-          <div id="regularSearchProgress" class="alert alert-info mb-3">
-            <div class="d-flex justify-content-between">
-              <strong>Search in progress</strong>
-              <span id="regularProgressStatus">Initializing...</span>
-            </div>
-            <div class="progress mt-2">
-              <div id="regularProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
-            </div>
-            <div id="regularSearchStep" class="mt-2 small">Please wait while we search for results...</div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="useDeepSearch" name="use_deep_search" value="true" {% if
+              use_deep_search %}checked{% endif %} onchange="document.getElementById('useAiEnhanced').checked = false;">
+            <label class="form-check-label" for="useDeepSearch">Deep Search</label>
           </div>
-          {% endif %}
-          
-          <!-- Deep Search Progress (shown when a deep search is active) -->
-          {% if deep_search_active %}
-          <div id="deepSearchProgress" class="alert alert-info mb-3">
-            <div class="d-flex justify-content-between">
-              <strong>Deep Search in progress</strong>
-              <span id="progressStatus">Initializing...</span>
-            </div>
-            <div class="progress mt-2">
-              <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
-            </div>
-            <div id="deepSearchStep" class="mt-2 small">Please wait while we find the best results for you...</div>
-          </div>
-          {% endif %}
-          
-          <!-- Grand Summary (shown when deep search has completed) -->
-          {% if grand_summary and not deep_search_active %}
-          <div class="alert alert-success mb-3">
-            <div class="card">
-              <div class="card-header">
-                <h5 class="mb-0">Deep Search Results</h5>
-              </div>
-              <div class="card-body">
-                {{ grand_summary|markdown }}
-              </div>
-            </div>
-          </div>
-          {% endif %}
-          
-          <!-- Show previous search message if applicable -->
-          {% if show_previous_search and query %}
-          <div class="alert alert-secondary mb-3">
-            <div class="d-flex justify-content-between align-items-center flex-wrap">
-              <div>
-                <strong>Previous search:</strong> "{{ query }}"
-              </div>
-              <a href="{{ url_for('search', q=query, genre=selected_genre, release_year=selected_year, platform=selected_platform, price=selected_price, sort_by=sort_by, use_ai_enhanced='true' if use_ai_enhanced else 'false', use_deep_search='true' if use_deep_search else 'false', run_search='true') }}" class="btn btn-primary btn-sm mt-2 mt-sm-0">Run This Search Again</a>
-            </div>
-          </div>
-          {% endif %}
-          
-          <!-- Show AI optimization explanation if available -->
-          {% if optimization_explanation and query and use_ai_enhanced and not show_previous_search and not deep_search_active %}
-          <div class="alert alert-info mb-3">
-            <small><strong>AI Enhanced:</strong> {{ optimization_explanation }}</small>
-          </div>
-          {% endif %}
-          
-          <!-- Collapsible section for filters -->
-          <div class="collapse {% if query %}show{% endif %}" id="advancedFilters">
-            <div class="row g-2 mt-3">
-              <!-- First row of filters -->
-              <div class="col-sm-6 col-md-3">
-                <label for="genre" class="form-label">Genre:</label>
-                <select name="genre" class="form-select form-select-sm">
-          <option value="All" {% if selected_genre == "All" %}selected{% endif %}>All</option>
-          <option value="Casual" {% if selected_genre == "Casual" %}selected{% endif %}>Casual</option>
-          <option value="Indie" {% if selected_genre == "Indie" %}selected{% endif %}>Indie</option>
-          <option value="Action" {% if selected_genre == "Action" %}selected{% endif %}>Action</option>
-          <!-- Add more genres as needed -->
-        </select>
+        </div>
       </div>
-              <div class="col-sm-6 col-md-3">
-                <label for="release_year" class="form-label">Release Year:</label>
-                <select name="release_year" class="form-select form-select-sm">
-          <option value="All" {% if selected_year == "All" %}selected{% endif %}>All</option>
-          <!-- Example options; extend as needed -->
-          <option value="2024" {% if selected_year == "2024" %}selected{% endif %}>2024</option>
-          <option value="2023" {% if selected_year == "2023" %}selected{% endif %}>2023</option>
-          <option value="2022" {% if selected_year == "2022" %}selected{% endif %}>2022</option>
-          <option value="2021" {% if selected_year == "2021" %}selected{% endif %}>2021</option>
-        </select>
+
+      <!-- Regular Search Progress (shown when a regular or AI Enhanced search is active) -->
+      {% if regular_search_active %}
+      <div id="regularSearchProgress" class="alert alert-info mb-3">
+        <div class="d-flex justify-content-between">
+          <strong>Search in progress</strong>
+          <span id="regularProgressStatus">Initializing...</span>
+        </div>
+        <div class="progress mt-2">
+          <div id="regularProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+            style="width: 0%"></div>
+        </div>
+        <div id="regularSearchStep" class="mt-2 small">Please wait while we search for results...</div>
       </div>
-              <div class="col-sm-6 col-md-3">
-                <label for="platform" class="form-label">Platform:</label>
-                <select name="platform" class="form-select form-select-sm">
-          <option value="All" {% if selected_platform == "All" %}selected{% endif %}>All</option>
-          <option value="Windows" {% if selected_platform == "Windows" %}selected{% endif %}>Windows</option>
-          <option value="Mac" {% if selected_platform == "Mac" %}selected{% endif %}>Mac</option>
-          <option value="Linux" {% if selected_platform == "Linux" %}selected{% endif %}>Linux</option>
-        </select>
+      {% endif %}
+
+      <!-- Deep Search Progress (shown when a deep search is active) -->
+      {% if deep_search_active %}
+      <div id="deepSearchProgress" class="alert alert-info mb-3">
+        <div class="d-flex justify-content-between">
+          <strong>Deep Search in progress</strong>
+          <span id="progressStatus">Initializing...</span>
+        </div>
+        <div class="progress mt-2">
+          <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+        </div>
+        <div id="deepSearchStep" class="mt-2 small">Please wait while we find the best results for you...</div>
       </div>
-              <div class="col-sm-6 col-md-3">
-                <label for="price" class="form-label">Price:</label>
-                <select name="price" class="form-select form-select-sm">
-          <option value="All" {% if selected_price == "All" %}selected{% endif %}>All</option>
-          <option value="Free" {% if selected_price == "Free" %}selected{% endif %}>Free</option>
-          <option value="Paid" {% if selected_price == "Paid" %}selected{% endif %}>Paid</option>
-        </select>
-      </div>
-              <!-- Second row for sorting and display options -->
-              <div class="col-sm-6 col-lg-4">
-                <label for="sort_by" class="form-label">Sort By:</label>
-                <select name="sort_by" class="form-select form-select-sm">
-        <option value="Relevance" {% if sort_by == "Relevance" %}selected{% endif %}>Relevance</option>
-        <option value="Name (A-Z)" {% if sort_by == "Name (A-Z)" %}selected{% endif %}>Name (A-Z)</option>
-        <option value="Release Date (Newest)" {% if sort_by == "Release Date (Newest)" %}selected{% endif %}>Release Date (Newest)</option>
-        <option value="Release Date (Oldest)" {% if sort_by == "Release Date (Oldest)" %}selected{% endif %}>Release Date (Oldest)</option>
-        <option value="Price (Low to High)" {% if sort_by == "Price (Low to High)" %}selected{% endif %}>Price (Low to High)</option>
-        <option value="Price (High to Low)" {% if sort_by == "Price (High to Low)" %}selected{% endif %}>Price (High to Low)</option>
-        <option value="Review Count (High to Low)" {% if sort_by == "Review Count (High to Low)" %}selected{% endif %}>Review Count (High to Low)</option>
-        <option value="Positive Review % (High to Low)" {% if sort_by == "Positive Review % (High to Low)" %}selected{% endif %}>Positive Review % (High to Low)</option>
-      </select>
-    </div>
-              <div class="col-sm-6 col-lg-4">
-                <label for="result_limit" class="form-label">Results to Display:</label>
-                <select name="result_limit" id="result_limit" class="form-select form-select-sm">
-                  <option value="10" {% if result_limit == 10 %}selected{% endif %}>10 results</option>
-                  <option value="20" {% if result_limit == 20 %}selected{% endif %}>20 results</option>
-                  <option value="30" {% if result_limit == 30 %}selected{% endif %}>30 results</option>
-                  <option value="40" {% if result_limit == 40 %}selected{% endif %}>40 results</option>
-                  <option value="50" {% if result_limit == 50 or not result_limit %}selected{% endif %}>50 results</option>
-                </select>
-              </div>
-              <div class="col-12 col-lg-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">Apply Filters</button>
-              </div>
-            </div>
+      {% endif %}
+
+      <!-- Grand Summary (shown when deep search has completed) -->
+      {% if grand_summary and not deep_search_active %}
+      <div class="alert alert-success mb-3">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Deep Search Results</h5>
           </div>
-  </form>
-      </div>
-    </div>
-    
-    <!-- Search Results display -->
-  {% if results %}
-      {% if regular_search_active or deep_search_active %}
-      <div class="alert alert-secondary mb-3">
-        <div class="d-flex justify-content-between align-items-center">
-          <span>
-            <i class="bi bi-info-circle"></i> 
-            Showing previous search results while your new search is in progress.
-          </span>
+          <div class="card-body">
+            {{ grand_summary|markdown }}
+          </div>
         </div>
       </div>
       {% endif %}
-      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h2 class="mb-0">
-          {% if regular_search_active or deep_search_active %}
-          Previous Search Results ({{ results|length }})
-          {% else %}
-          Search Results ({{ results|length }})
-          {% endif %}
-        </h2>
-        {% if current_user.is_authenticated %}
-        <div class="d-flex align-items-center flex-wrap">
-          <select id="saveResultsCount" class="form-select form-select-sm me-2" style="width: auto;">
-            {% if result_limit >= 10 %}<option value="10">Save 10 games</option>{% endif %}
-            {% if result_limit >= 20 %}<option value="20">Save 20 games</option>{% endif %}
-            {% if result_limit >= 30 %}<option value="30">Save 30 games</option>{% endif %}
-            {% if result_limit >= 40 %}<option value="40">Save 40 games</option>{% endif %}
-            <option value="{{ result_limit }}" selected>Save all {{ result_limit }}</option>
-          </select>
-          <button id="saveResultsAsListBtn" class="btn btn-success">
-            <i class="bi bi-save"></i> <span class="d-none d-sm-inline">Save as List</span>
-          </button>
+
+      <!-- Show previous search message if applicable -->
+      {% if show_previous_search and query %}
+      <div class="alert alert-secondary mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+          <div>
+            <strong>Previous search:</strong> "{{ query }}"
+          </div>
+          <a href="{{ url_for('search', q=query, genre=selected_genre, release_year=selected_year, platform=selected_platform, price=selected_price, sort_by=sort_by, use_ai_enhanced='true' if use_ai_enhanced else 'false', use_deep_search='true' if use_deep_search else 'false', run_search='true') }}"
+            class="btn btn-primary btn-sm mt-2 mt-sm-0">Run This Search Again</a>
         </div>
+      </div>
+      {% endif %}
+
+      <!-- Show AI optimization explanation if available -->
+      {% if optimization_explanation and query and use_ai_enhanced and not show_previous_search and not
+      deep_search_active %}
+      <div class="alert alert-info mb-3">
+        <small><strong>AI Enhanced:</strong> {{ optimization_explanation }}</small>
+      </div>
+      {% endif %}
+
+      <!-- Collapsible section for filters -->
+      <div class="collapse {% if query %}show{% endif %}" id="advancedFilters">
+        <div class="row g-2 mt-3">
+          <!-- First row of filters -->
+          <div class="col-sm-6 col-md-3">
+            <label for="genre" class="form-label">Genre:</label>
+            <select name="genre" class="form-select form-select-sm">
+              <option value="All" {% if selected_genre=="All" %}selected{% endif %}>All</option>
+              <option value="Casual" {% if selected_genre=="Casual" %}selected{% endif %}>Casual</option>
+              <option value="Indie" {% if selected_genre=="Indie" %}selected{% endif %}>Indie</option>
+              <option value="Action" {% if selected_genre=="Action" %}selected{% endif %}>Action</option>
+              <!-- Add more genres as needed -->
+            </select>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <label for="release_year" class="form-label">Release Year:</label>
+            <select name="release_year" class="form-select form-select-sm">
+              <option value="All" {% if selected_year=="All" %}selected{% endif %}>All</option>
+              <!-- Example options; extend as needed -->
+              <option value="2024" {% if selected_year=="2024" %}selected{% endif %}>2024</option>
+              <option value="2023" {% if selected_year=="2023" %}selected{% endif %}>2023</option>
+              <option value="2022" {% if selected_year=="2022" %}selected{% endif %}>2022</option>
+              <option value="2021" {% if selected_year=="2021" %}selected{% endif %}>2021</option>
+            </select>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <label for="platform" class="form-label">Platform:</label>
+            <select name="platform" class="form-select form-select-sm">
+              <option value="All" {% if selected_platform=="All" %}selected{% endif %}>All</option>
+              <option value="Windows" {% if selected_platform=="Windows" %}selected{% endif %}>Windows</option>
+              <option value="Mac" {% if selected_platform=="Mac" %}selected{% endif %}>Mac</option>
+              <option value="Linux" {% if selected_platform=="Linux" %}selected{% endif %}>Linux</option>
+            </select>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <label for="price" class="form-label">Price:</label>
+            <select name="price" class="form-select form-select-sm">
+              <option value="All" {% if selected_price=="All" %}selected{% endif %}>All</option>
+              <option value="Free" {% if selected_price=="Free" %}selected{% endif %}>Free</option>
+              <option value="Paid" {% if selected_price=="Paid" %}selected{% endif %}>Paid</option>
+            </select>
+          </div>
+          <!-- Second row for sorting and display options -->
+          <div class="col-sm-6 col-lg-4">
+            <label for="sort_by" class="form-label">Sort By:</label>
+            <select name="sort_by" class="form-select form-select-sm">
+              <option value="Relevance" {% if sort_by=="Relevance" %}selected{% endif %}>Relevance</option>
+              <option value="Name (A-Z)" {% if sort_by=="Name (A-Z)" %}selected{% endif %}>Name (A-Z)</option>
+              <option value="Release Date (Newest)" {% if sort_by=="Release Date (Newest)" %}selected{% endif %}>Release
+                Date (Newest)</option>
+              <option value="Release Date (Oldest)" {% if sort_by=="Release Date (Oldest)" %}selected{% endif %}>Release
+                Date (Oldest)</option>
+              <option value="Price (Low to High)" {% if sort_by=="Price (Low to High)" %}selected{% endif %}>Price (Low
+                to High)</option>
+              <option value="Price (High to Low)" {% if sort_by=="Price (High to Low)" %}selected{% endif %}>Price (High
+                to Low)</option>
+              <option value="Review Count (High to Low)" {% if sort_by=="Review Count (High to Low)" %}selected{% endif
+                %}>Review Count (High to Low)</option>
+              <option value="Positive Review % (High to Low)" {% if sort_by=="Positive Review % (High to Low)"
+                %}selected{% endif %}>Positive Review % (High to Low)</option>
+            </select>
+          </div>
+          <div class="col-sm-6 col-lg-4">
+            <label for="result_limit" class="form-label">Results to Display:</label>
+            <select name="result_limit" id="result_limit" class="form-select form-select-sm">
+              <option value="10" {% if result_limit==10 %}selected{% endif %}>10 results</option>
+              <option value="20" {% if result_limit==20 %}selected{% endif %}>20 results</option>
+              <option value="30" {% if result_limit==30 %}selected{% endif %}>30 results</option>
+              <option value="40" {% if result_limit==40 %}selected{% endif %}>40 results</option>
+              <option value="50" {% if result_limit==50 or not result_limit %}selected{% endif %}>50 results</option>
+            </select>
+          </div>
+          <div class="col-12 col-lg-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Search Results display -->
+{% if results %}
+{% if regular_search_active or deep_search_active %}
+<div class="alert alert-secondary mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <span>
+      <i class="bi bi-info-circle"></i>
+      Showing previous search results while your new search is in progress.
+    </span>
+  </div>
+</div>
+{% endif %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h2 class="mb-0">
+    {% if regular_search_active or deep_search_active %}
+    Previous Search Results ({{ results|length }})
+    {% else %}
+    Search Results ({{ results|length }})
+    {% endif %}
+  </h2>
+  {% if current_user.is_authenticated %}
+  <div class="d-flex align-items-center flex-wrap">
+    <select id="saveResultsCount" class="form-select form-select-sm me-2" style="width: auto;">
+      {% if result_limit >= 10 %}<option value="10">Save 10 games</option>{% endif %}
+      {% if result_limit >= 20 %}<option value="20">Save 20 games</option>{% endif %}
+      {% if result_limit >= 30 %}<option value="30">Save 30 games</option>{% endif %}
+      {% if result_limit >= 40 %}<option value="40">Save 40 games</option>{% endif %}
+      <option value="{{ result_limit }}" selected>Save all {{ result_limit }}</option>
+    </select>
+    <button id="saveResultsAsListBtn" class="btn btn-success">
+      <i class="bi bi-save"></i> <span class="d-none d-sm-inline">Save as List</span>
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<div
+  class="row row-cols-1 row-cols-md-2 g-3 {% if regular_search_active or deep_search_active %}previous-results{% endif %}">
+  {% for r in results %}
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <!-- Bootstrap Carousel for each result -->
+      <div id="carousel-{{ r.appid }}" class="carousel slide card-img-top" style="max-height: 220px; overflow: hidden;">
+        <div class="carousel-inner">
+          {% for item in r.media %}
+          {% set lower_item = item|lower %}
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            {% if 'webm' in lower_item %}
+            <video class="d-block w-100" controls>
+              <source src="{{ item }}" type="video/webm">
+              Your browser does not support the video tag.
+            </video>
+            {% elif 'mp4' in lower_item %}
+            <video class="d-block w-100" controls>
+              <source src="{{ item }}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            {% else %}
+            <img src="{{ item }}" class="d-block w-100" alt="{{ r.name }}">
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if r.media|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ r.appid }}"
+          data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ r.appid }}"
+          data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Next</span>
+        </button>
         {% endif %}
       </div>
-      
-      <div class="row row-cols-1 row-cols-md-2 g-3 {% if regular_search_active or deep_search_active %}previous-results{% endif %}">
-      {% for r in results %}
-          <div class="col">
-            <div class="card h-100 shadow-sm">
-            <!-- Bootstrap Carousel for each result -->
-              <div id="carousel-{{ r.appid }}" class="carousel slide card-img-top" style="max-height: 220px; overflow: hidden;">
-              <div class="carousel-inner">
-                {% for item in r.media %}
-                  {% set lower_item = item|lower %}
-                  <div class="carousel-item {% if loop.first %}active{% endif %}">
-                    {% if 'webm' in lower_item %}
-                      <video class="d-block w-100" controls>
-                        <source src="{{ item }}" type="video/webm">
-                        Your browser does not support the video tag.
-                      </video>
-                    {% elif 'mp4' in lower_item %}
-                      <video class="d-block w-100" controls>
-                        <source src="{{ item }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                      </video>
-                    {% else %}
-                      <img src="{{ item }}" class="d-block w-100" alt="{{ r.name }}">
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-              {% if r.media|length > 1 %}
-                <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ r.appid }}" data-bs-slide="prev">
-                  <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                  <span class="visually-hidden">Previous</span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ r.appid }}" data-bs-slide="next">
-                  <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                  <span class="visually-hidden">Next</span>
-                </button>
-              {% endif %}
-            </div>
-              <div class="card-body d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="card-title mb-0 text-truncate">
-                    <a href="https://store.steampowered.com/app/{{ r.appid }}/" target="_blank" class="text-decoration-none text-reset">
-                  {{ r.name }}
-                </a>
-              </h5>
-                  {% if current_user.is_authenticated %}
-                  <button type="button" class="btn btn-sm btn-outline-primary ms-2 flex-shrink-0" data-bs-toggle="modal" data-bs-target="#saveGameModal-{{ r.appid }}">
-                    <i class="bi bi-plus-circle"></i>
-                  </button>
-                  {% endif %}
-                </div>
-                
-                <div class="game-details small text-muted mb-2">
-                {% if r.genres %}
-                    <div><strong>Genres:</strong> {{ r.genres|join(', ') }}</div>
-                {% endif %}
-                  <div class="d-flex justify-content-between">
-                    <span><strong>Year:</strong> {{ r.release_year }}</span>
-                    <span><strong>Price:</strong> {% if r.is_free %}Free{% else %}${{ r.price }}{% endif %}</span>
-                  </div>
-                  <div class="d-flex justify-content-between">
-                    <span><strong>Rating:</strong> {{ r.pos_percent|round(0) }}%</span>
-                    <span><strong>Reviews:</strong> {{ r.total_reviews }}</span>
-                  </div>
-                </div>
-                
-                <!-- Action buttons at bottom of card -->
-                <div class="mt-auto">
-                  <div class="d-flex flex-column gap-2">
-                    <!-- Action buttons row -->
-                    <div class="d-flex gap-1">
-                      <a href="{{ url_for('detail', appid=r.appid) }}" class="btn btn-sm btn-primary flex-grow-1 show-loader">
-                        <i class="bi bi-bar-chart-fill"></i><span class="d-none d-sm-inline ms-1">Analyze</span>
-                      </a>
-                      <a href="https://www.youtube.com/results?search_query={{ r.name|replace(' ', '+') }}+gameplay" 
-                         class="btn btn-sm btn-danger flex-grow-1" target="_blank">
-                        <i class="bi bi-youtube"></i><span class="d-none d-sm-inline ms-1">YouTube</span>
-                      </a>
-                      {% if current_user.is_authenticated %}
-                      <button type="button" class="btn btn-sm btn-info flex-grow-1 game-note-btn" 
-                              data-appid="{{ r.appid }}" data-game-name="{{ r.name }}">
-                        <i class="bi bi-journal-text"></i><span class="d-none d-sm-inline ms-1">Notes</span>
-                      </button>
-                      {% endif %}
-                    </div>
-                    
-                    <!-- Additional content toggles -->
-                    <div class="d-flex flex-wrap gap-1">
-              {% if r.ai_summary %}
-                      <button class="btn btn-sm btn-outline-secondary flex-grow-1" type="button" 
-                              data-bs-toggle="collapse" data-bs-target="#summary-{{ r.appid }}">
-                        <i class="bi bi-robot"></i><span class="d-none d-md-inline ms-1">AI Summary</span>
-                      </button>
-                      {% endif %}
-                      {% if current_user.is_authenticated %}
-                      <a class="btn btn-sm btn-outline-secondary flex-grow-1 collapse-note-btn d-none" 
-                         data-bs-toggle="collapse" 
-                         href="#gameNote-{{ r.appid }}">
-                        <i class="bi bi-journal-text"></i><span class="d-none d-md-inline ms-1">Your Notes</span>
-                      </a>
-                      {% endif %}
-                    </div>
-                  </div>
-                  
-                  <!-- Collapsible content sections -->
-                  {% if r.ai_summary %}
-                  <div class="collapse mt-2" id="summary-{{ r.appid }}">
-                    <div class="card card-body small">
-                    {{ r.ai_summary|markdown }}
-                  </div>
-                </div>
-              {% endif %}
-                  
-                  {% if current_user.is_authenticated %}
-                  <div class="collapse mt-2" id="gameNote-{{ r.appid }}">
-                    <div class="card card-body small game-note-content">
-                      <!-- Note content will be loaded here -->
-                      <div class="text-center">
-                        <div class="spinner-border spinner-border-sm" role="status">
-                          <span class="visually-hidden">Loading...</span>
-              </div>
-                        <p class="small text-muted mb-0">Loading your notes...</p>
-            </div>
+      <div class="card-body d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="card-title mb-0 text-truncate">
+            <a href="https://store.steampowered.com/app/{{ r.appid }}/" target="_blank"
+              class="text-decoration-none text-reset">
+              {{ r.name }}
+            </a>
+          </h5>
+          {% if current_user.is_authenticated %}
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2 flex-shrink-0" data-bs-toggle="modal"
+            data-bs-target="#saveGameModal-{{ r.appid }}">
+            <i class="bi bi-plus-circle"></i>
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="game-details small text-muted mb-2">
+          {% if r.genres %}
+          <div><strong>Genres:</strong> {{ r.genres|join(', ') }}</div>
+          {% endif %}
+          <div class="d-flex justify-content-between">
+            <span><strong>Year:</strong> {{ r.release_year }}</span>
+            <span><strong>Price:</strong> {% if r.is_free %}Free{% else %}${{ r.price }}{% endif %}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span><strong>Rating:</strong> {{ r.pos_percent|round(0) }}%</span>
+            <span><strong>Reviews:</strong> {{ r.total_reviews }}</span>
           </div>
         </div>
-                  {% endif %}
-                </div>
-              </div>
+
+        <!-- Action buttons at bottom of card -->
+        <div class="mt-auto">
+          <div class="d-flex flex-column gap-2">
+            <!-- Action buttons row -->
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('detail', appid=r.appid) }}" class="btn btn-sm btn-primary flex-grow-1 show-loader">
+                <i class="bi bi-bar-chart-fill"></i><span class="d-none d-sm-inline ms-1">Analyze</span>
+              </a>
+              <a href="https://www.youtube.com/results?search_query={{ r.name|replace(' ', '+') }}+gameplay"
+                class="btn btn-sm btn-danger flex-grow-1" target="_blank">
+                <i class="bi bi-youtube"></i><span class="d-none d-sm-inline ms-1">YouTube</span>
+              </a>
+              {% if current_user.is_authenticated %}
+              <button type="button" class="btn btn-sm btn-info flex-grow-1 game-note-btn" data-appid="{{ r.appid }}"
+                data-game-name="{{ r.name }}">
+                <i class="bi bi-journal-text"></i><span class="d-none d-sm-inline ms-1">Notes</span>
+              </button>
+              {% endif %}
+            </div>
+
+            <!-- Additional content toggles -->
+            <div class="d-flex flex-wrap gap-1">
+              {% if r.ai_summary %}
+              <button class="btn btn-sm btn-outline-secondary flex-grow-1" type="button" data-bs-toggle="collapse"
+                data-bs-target="#summary-{{ r.appid }}">
+                <i class="bi bi-robot"></i><span class="d-none d-md-inline ms-1">AI Summary</span>
+              </button>
+              {% endif %}
+              {% if current_user.is_authenticated %}
+              <a class="btn btn-sm btn-outline-secondary flex-grow-1 collapse-note-btn d-none" data-bs-toggle="collapse"
+                href="#gameNote-{{ r.appid }}">
+                <i class="bi bi-journal-text"></i><span class="d-none d-md-inline ms-1">Your Notes</span>
+              </a>
+              {% endif %}
             </div>
           </div>
-          
-          <!-- Save Game Modal -->
+
+          <!-- Collapsible content sections -->
+          {% if r.ai_summary %}
+          <div class="collapse mt-2" id="summary-{{ r.appid }}">
+            <div class="card card-body small">
+              {{ r.ai_summary|markdown }}
+            </div>
+          </div>
+          {% endif %}
+
           {% if current_user.is_authenticated %}
-          <div class="modal fade" id="saveGameModal-{{ r.appid }}" tabindex="-1" aria-labelledby="saveGameModalLabel-{{ r.appid }}" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="saveGameModalLabel-{{ r.appid }}">Save "{{ r.name }}" to Lists</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="collapse mt-2" id="gameNote-{{ r.appid }}">
+            <div class="card card-body small game-note-content">
+              <!-- Note content will be loaded here -->
+              <div class="text-center">
+                <div class="spinner-border spinner-border-sm" role="status">
+                  <span class="visually-hidden">Loading...</span>
                 </div>
-                <div class="modal-body">
-                  <form id="saveGameForm-{{ r.appid }}" method="post" action="/save_game/{{ r.appid }}">
-                    <div id="existingLists-{{ r.appid }}">
-                      <h6>Select Lists:</h6>
-                      <p class="loading-lists">Loading your lists...</p>
-                    </div>
-                    <hr>
-                    <div>
-                      <h6>Create New List:</h6>
-                      <div class="input-group mb-3">
-                        <input type="text" id="newListName-{{ r.appid }}" class="form-control" placeholder="New List Name">
-                        <button class="btn btn-outline-secondary" type="button" id="createListBtn-{{ r.appid }}">Create</button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                  <button type="button" class="btn btn-primary save-game-btn" data-appid="{{ r.appid }}">Save to Selected Lists</button>
-                </div>
+                <p class="small text-muted mb-0">Loading your notes...</p>
               </div>
             </div>
           </div>
           {% endif %}
-      {% endfor %}
-    </div>
-  {% else %}
-      <div class="text-center py-5">
-        <i class="bi bi-search" style="font-size: 3rem;"></i>
-        <p class="mt-3">Type something in the box above to begin searching.</p>
-      </div>
-    {% endif %}
-    
-    <!-- Save Results Loading Modal -->
-    {% if current_user.is_authenticated and results %}
-    <div class="modal fade" id="saveResultsModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="saveResultsModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="saveResultsModalLabel">Creating List...</h5>
-          </div>
-          <div class="modal-body">
-            <div id="saveResultsMessage" class="text-center mb-3">
-              <p>Our AI is generating a perfect name for your list...</p>
-            </div>
-            <div class="progress">
-              <div id="saveResultsProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-            </div>
-            <div id="saveResultsStatus" class="mt-3 small text-center">
-              <p>Please wait while we create your list with the selected games</p>
-            </div>
-            <div class="text-center mt-3" id="saveResultsCloseButtonContainer" style="display: none;">
-              <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
-    {% endif %}
+  </div>
 
-    <!-- Regular Search Progress Polling -->
-    {% if regular_search_active %}
-    <script>
-    // Regular search status polling
-    document.addEventListener('DOMContentLoaded', function() {
-      const progressBar = document.getElementById('regularProgressBar');
-      const progressStatus = document.getElementById('regularProgressStatus');
-      const searchStep = document.getElementById('regularSearchStep');
-      const searchProgress = document.getElementById('regularSearchProgress');
-      
-      let pollCount = 0;
-      let isCompleted = false;
-      
-      // Function to update the UI with the latest status
-      function updateProgressUI(data) {
-        // Update progress bar
-        const progress = data.progress || 0;
-        progressBar.style.width = `${progress}%`;
-        
-        // Update status text
-        if (data.current_step) {
-          searchStep.textContent = data.current_step;
-        }
-        
-        // Update progress percentage in the status
-        progressStatus.textContent = `${progress}%`;
-        
-        // If search is complete or has an error, handle accordingly
-        if (data.completed || data.error) {
-          isCompleted = true;
-          
-          if (data.error) {
-            // Show error message
-            searchStep.textContent = `Error: ${data.error}`;
-            searchProgress.classList.remove('alert-info');
-            searchProgress.classList.add('alert-danger');
-            progressBar.classList.remove('progress-bar-animated');
-            return false; // Stop polling
-          } else {
-            // Search completed successfully, redirect to see results
-            searchStep.textContent = "Search complete! Loading results...";
-            progressBar.classList.remove('progress-bar-animated');
-            progressStatus.textContent = "100%";
-            progressBar.style.width = "100%";
-            
-            // Change alert color to success
-            searchProgress.classList.remove('alert-info');
-            searchProgress.classList.add('alert-success');
-            
-            // Reload page to show results after a short delay
-            setTimeout(() => {
-              // Add all current search parameters to the URL
-              const params = new URLSearchParams();
-              params.append('q', "{{ query }}");
-              params.append('genre', "{{ selected_genre }}");
-              params.append('release_year', "{{ selected_year }}");
-              params.append('platform', "{{ selected_platform }}");
-              params.append('price', "{{ selected_price }}");
-              params.append('sort_by', "{{ sort_by }}");
-              params.append('result_limit', "{{ result_limit }}");
-              params.append('use_ai_enhanced', '{{ "true" if use_ai_enhanced else "false" }}');
-              params.append('use_deep_search', 'false');
-              params.append('view_results', 'true');
-              
-              // Reload page to show results
-              window.location.href = window.location.pathname + '?' + params.toString();
-            }, 1500);
-            
-            return false; // Stop polling
-          }
-        }
-        
-        return true; // Continue polling
-      }
-      
-      // Function to poll for status updates
-      function pollSearchStatus() {
-        if (isCompleted) {
-          console.log('Polling stopped because search is completed');
-          return; // Don't continue polling if already completed
-        }
-        
-        fetch('/search_status')
-          .then(response => response.json())
-          .then(data => {
-            console.log('Search Status Update:', data);
-            const shouldContinue = updateProgressUI(data);
-            
-            // Determine if we should continue polling
-            if (shouldContinue && !isCompleted) {
-              // Adjust polling frequency based on progress
-              // Poll more frequently at the beginning, less frequently as we progress
-              const baseDelay = 800; // Base delay in milliseconds
-              const progress = data.progress || 0;
-              
-              // Increase delay as progress increases (max ~2.5 seconds when near completion)
-              const delay = baseDelay + (progress * 15);
-              
-              setTimeout(pollSearchStatus, delay);
-              pollCount++;
-            } else {
-              console.log('Polling stopped, shouldContinue:', shouldContinue, 'isCompleted:', isCompleted);
-            }
-          })
-          .catch(error => {
-            console.error('Error polling for search status:', error);
-            // Continue polling despite errors, but less frequently
-            if (!isCompleted) {
-              setTimeout(pollSearchStatus, 3000);
-            }
-          });
-      }
-      
-      // Start polling immediately
-      pollSearchStatus();
-      
-      // Remove full-screen loader if it exists
-      const loaderOverlay = document.getElementById('loader-overlay');
-      if (loaderOverlay) {
-        loaderOverlay.style.display = 'none';
-      }
-    });
-    </script>
-    {% endif %}
-
-    <!-- Deep Search status polling -->
-    {% if deep_search_active %}
-    <script>
-      // Save the deep search query in localStorage to allow restoration if user navigates away
-      document.addEventListener('DOMContentLoaded', function() {
-        try {
-          localStorage.setItem('steamseek_pending_deep_search', JSON.stringify({
-            query: '{{ query }}',
-            timestamp: Date.now(),
-            filters: {
-              genre: '{{ selected_genre }}',
-              release_year: '{{ selected_year }}',
-              platform: '{{ selected_platform }}',
-              price: '{{ selected_price }}',
-              sort_by: '{{ sort_by }}',
-              result_limit: '{{ result_limit }}'
-            }
-          }));
-          console.log('Saved pending deep search info to localStorage');
-        } catch (error) {
-          console.error('Error saving deep search info:', error);
-        }
-      });
-    </script>
-    {% endif %}
-  {% endif %}
-{% endblock %}
-
-{% block body_end %}
-  <!-- Game Note Modal -->
+  <!-- Save Game Modal -->
   {% if current_user.is_authenticated %}
-  <div class="modal fade" id="gameNoteModal" tabindex="-1" aria-labelledby="gameNoteModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+  <div class="modal fade" id="saveGameModal-{{ r.appid }}" tabindex="-1"
+    aria-labelledby="saveGameModalLabel-{{ r.appid }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="gameNoteModalLabel">Notes for Game</h5>
+          <h5 class="modal-title" id="saveGameModalLabel-{{ r.appid }}">Save "{{ r.name }}" to Lists</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="gameNoteForm">
-            <input type="hidden" id="gameNoteAppId" value="">
-            <div class="mb-3">
-              <label for="gameNoteText" class="form-label">Your Notes</label>
-              <textarea class="form-control" id="gameNoteText" rows="8" placeholder="Add your notes about this game here..."></textarea>
-              <small class="text-muted">Markdown formatting is supported.</small>
+          <form id="saveGameForm-{{ r.appid }}" method="post" action="/save_game/{{ r.appid }}">
+            <div id="existingLists-{{ r.appid }}">
+              <h6>Select Lists:</h6>
+              <p class="loading-lists">Loading your lists...</p>
             </div>
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="showPreview">
-              <label class="form-check-label" for="showPreview">
-                Show preview
-              </label>
-            </div>
-            <div id="previewContainer" class="card p-3 mb-3" style="display: none;">
-              <h6>Preview:</h6>
-              <div id="notePreview"></div>
+            <hr>
+            <div>
+              <h6>Create New List:</h6>
+              <div class="input-group mb-3">
+                <input type="text" id="newListName-{{ r.appid }}" class="form-control" placeholder="New List Name">
+                <button class="btn btn-outline-secondary" type="button" id="createListBtn-{{ r.appid }}">Create</button>
+              </div>
             </div>
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-danger" id="deleteNoteBtn">Delete Note</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="saveNoteBtn">Save Note</button>
+          <button type="button" class="btn btn-primary save-game-btn" data-appid="{{ r.appid }}">Save to Selected
+            Lists</button>
         </div>
       </div>
     </div>
   </div>
   {% endif %}
+  {% endfor %}
+</div>
+{% else %}
+<!-- Empty results - keep same structure for JavaScript AJAX updates -->
+<div id="emptyResultsPlaceholder" class="row row-cols-1 row-cols-md-2 g-3 justify-content-center">
+  <div class="col-12 text-center py-5">
+    <i class="bi bi-search" style="font-size: 3rem;"></i>
+    <p class="mt-3 text-muted">Type something in the box above to begin searching.</p>
+  </div>
+</div>
+{% endif %}
 
-  <!-- Game Notes JavaScript -->
-  {% if current_user.is_authenticated %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Check if Bootstrap is properly loaded
-      console.log('DOMContentLoaded event fired');
-      console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
-      console.log('Bootstrap Modal available:', typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined');
-      
-      // Get modal elements
-      const modalElement = document.getElementById('gameNoteModal');
-      console.log('Modal element exists:', !!modalElement);
-      
-      let modal;
-      try {
-        modal = new bootstrap.Modal(document.getElementById('gameNoteModal'));
-        console.log('Modal initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize modal:', error);
+<!-- Save Results Loading Modal -->
+{% if current_user.is_authenticated and results %}
+<div class="modal fade" id="saveResultsModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+  aria-labelledby="saveResultsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="saveResultsModalLabel">Creating List...</h5>
+      </div>
+      <div class="modal-body">
+        <div id="saveResultsMessage" class="text-center mb-3">
+          <p>Our AI is generating a perfect name for your list...</p>
+        </div>
+        <div class="progress">
+          <div id="saveResultsProgress" class="progress-bar progress-bar-striped progress-bar-animated"
+            role="progressbar" style="width: 0%"></div>
+        </div>
+        <div id="saveResultsStatus" class="mt-3 small text-center">
+          <p>Please wait while we create your list with the selected games</p>
+        </div>
+        <div class="text-center mt-3" id="saveResultsCloseButtonContainer" style="display: none;">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Regular Search Progress Polling -->
+{% if regular_search_active %}
+<script>
+  // Regular search status polling
+  document.addEventListener('DOMContentLoaded', function () {
+    const progressBar = document.getElementById('regularProgressBar');
+    const progressStatus = document.getElementById('regularProgressStatus');
+    const searchStep = document.getElementById('regularSearchStep');
+    const searchProgress = document.getElementById('regularSearchProgress');
+
+    let pollCount = 0;
+    let isCompleted = false;
+
+    // Function to update the UI with the latest status
+    function updateProgressUI(data) {
+      // Update progress bar
+      const progress = data.progress || 0;
+      progressBar.style.width = `${progress}%`;
+
+      // Update status text
+      if (data.current_step) {
+        searchStep.textContent = data.current_step;
       }
-      
-      // Get modal elements
-      const modalTitle = document.getElementById('gameNoteModalLabel');
-      const appIdInput = document.getElementById('gameNoteAppId');
-      const noteTextarea = document.getElementById('gameNoteText');
-      const saveBtn = document.getElementById('saveNoteBtn');
-      const deleteBtn = document.getElementById('deleteNoteBtn');
-      const showPreviewCheckbox = document.getElementById('showPreview');
-      const previewContainer = document.getElementById('previewContainer');
-      const notePreview = document.getElementById('notePreview');
-      
-      // Toast notification helper function
-      function showToast(title, message, type) {
-        // Create toast container if it doesn't exist
-        let toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-          toastContainer = document.createElement('div');
-          toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-          document.body.appendChild(toastContainer);
+
+      // Update progress percentage in the status
+      progressStatus.textContent = `${progress}%`;
+
+      // If search is complete or has an error, handle accordingly
+      if (data.completed || data.error) {
+        isCompleted = true;
+
+        if (data.error) {
+          // Show error message
+          searchStep.textContent = `Error: ${data.error}`;
+          searchProgress.classList.remove('alert-info');
+          searchProgress.classList.add('alert-danger');
+          progressBar.classList.remove('progress-bar-animated');
+          return false; // Stop polling
+        } else {
+          // Search completed successfully, redirect to see results
+          searchStep.textContent = "Search complete! Loading results...";
+          progressBar.classList.remove('progress-bar-animated');
+          progressStatus.textContent = "100%";
+          progressBar.style.width = "100%";
+
+          // Change alert color to success
+          searchProgress.classList.remove('alert-info');
+          searchProgress.classList.add('alert-success');
+
+          // Reload page to show results after a short delay
+          setTimeout(() => {
+            // Add all current search parameters to the URL
+            const params = new URLSearchParams();
+            params.append('q', "{{ query }}");
+            params.append('genre', "{{ selected_genre }}");
+            params.append('release_year', "{{ selected_year }}");
+            params.append('platform', "{{ selected_platform }}");
+            params.append('price', "{{ selected_price }}");
+            params.append('sort_by', "{{ sort_by }}");
+            params.append('result_limit', "{{ result_limit }}");
+            params.append('use_ai_enhanced', '{{ "true" if use_ai_enhanced else "false" }}');
+            params.append('use_deep_search', 'false');
+            params.append('view_results', 'true');
+
+            // Reload page to show results
+            window.location.href = window.location.pathname + '?' + params.toString();
+          }, 1500);
+
+          return false; // Stop polling
         }
-        
-        // Create toast element
-        const toastEl = document.createElement('div');
-        toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
-        toastEl.setAttribute('role', 'alert');
-        toastEl.setAttribute('aria-live', 'assertive');
-        toastEl.setAttribute('aria-atomic', 'true');
-        
-        toastEl.innerHTML = `
+      }
+
+      return true; // Continue polling
+    }
+
+    // Function to poll for status updates
+    function pollSearchStatus() {
+      if (isCompleted) {
+        console.log('Polling stopped because search is completed');
+        return; // Don't continue polling if already completed
+      }
+
+      fetch('/search_status')
+        .then(response => response.json())
+        .then(data => {
+          console.log('Search Status Update:', data);
+          const shouldContinue = updateProgressUI(data);
+
+          // Determine if we should continue polling
+          if (shouldContinue && !isCompleted) {
+            // Adjust polling frequency based on progress
+            // Poll more frequently at the beginning, less frequently as we progress
+            const baseDelay = 800; // Base delay in milliseconds
+            const progress = data.progress || 0;
+
+            // Increase delay as progress increases (max ~2.5 seconds when near completion)
+            const delay = baseDelay + (progress * 15);
+
+            setTimeout(pollSearchStatus, delay);
+            pollCount++;
+          } else {
+            console.log('Polling stopped, shouldContinue:', shouldContinue, 'isCompleted:', isCompleted);
+          }
+        })
+        .catch(error => {
+          console.error('Error polling for search status:', error);
+          // Continue polling despite errors, but less frequently
+          if (!isCompleted) {
+            setTimeout(pollSearchStatus, 3000);
+          }
+        });
+    }
+
+    // Start polling immediately
+    pollSearchStatus();
+
+    // Remove full-screen loader if it exists
+    const loaderOverlay = document.getElementById('loader-overlay');
+    if (loaderOverlay) {
+      loaderOverlay.style.display = 'none';
+    }
+  });
+</script>
+{% endif %}
+
+<!-- Deep Search status polling -->
+{% if deep_search_active %}
+<script>
+  // Save the deep search query in localStorage to allow restoration if user navigates away
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      localStorage.setItem('steamseek_pending_deep_search', JSON.stringify({
+        query: '{{ query }}',
+        timestamp: Date.now(),
+        filters: {
+          genre: '{{ selected_genre }}',
+          release_year: '{{ selected_year }}',
+          platform: '{{ selected_platform }}',
+          price: '{{ selected_price }}',
+          sort_by: '{{ sort_by }}',
+          result_limit: '{{ result_limit }}'
+        }
+      }));
+      console.log('Saved pending deep search info to localStorage');
+    } catch (error) {
+      console.error('Error saving deep search info:', error);
+    }
+  });
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block body_end %}
+<!-- Game Note Modal -->
+{% if current_user.is_authenticated %}
+<div class="modal fade" id="gameNoteModal" tabindex="-1" aria-labelledby="gameNoteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="gameNoteModalLabel">Notes for Game</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="gameNoteForm">
+          <input type="hidden" id="gameNoteAppId" value="">
+          <div class="mb-3">
+            <label for="gameNoteText" class="form-label">Your Notes</label>
+            <textarea class="form-control" id="gameNoteText" rows="8"
+              placeholder="Add your notes about this game here..."></textarea>
+            <small class="text-muted">Markdown formatting is supported.</small>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="showPreview">
+            <label class="form-check-label" for="showPreview">
+              Show preview
+            </label>
+          </div>
+          <div id="previewContainer" class="card p-3 mb-3" style="display: none;">
+            <h6>Preview:</h6>
+            <div id="notePreview"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-danger" id="deleteNoteBtn">Delete Note</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveNoteBtn">Save Note</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Game Notes JavaScript -->
+{% if current_user.is_authenticated %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Check if Bootstrap is properly loaded
+    console.log('DOMContentLoaded event fired');
+    console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
+    console.log('Bootstrap Modal available:', typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined');
+
+    // Get modal elements
+    const modalElement = document.getElementById('gameNoteModal');
+    console.log('Modal element exists:', !!modalElement);
+
+    let modal;
+    try {
+      modal = new bootstrap.Modal(document.getElementById('gameNoteModal'));
+      console.log('Modal initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize modal:', error);
+    }
+
+    // Get modal elements
+    const modalTitle = document.getElementById('gameNoteModalLabel');
+    const appIdInput = document.getElementById('gameNoteAppId');
+    const noteTextarea = document.getElementById('gameNoteText');
+    const saveBtn = document.getElementById('saveNoteBtn');
+    const deleteBtn = document.getElementById('deleteNoteBtn');
+    const showPreviewCheckbox = document.getElementById('showPreview');
+    const previewContainer = document.getElementById('previewContainer');
+    const notePreview = document.getElementById('notePreview');
+
+    // Toast notification helper function
+    function showToast(title, message, type) {
+      // Create toast container if it doesn't exist
+      let toastContainer = document.querySelector('.toast-container');
+      if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+      }
+
+      // Create toast element
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+      toastEl.setAttribute('role', 'alert');
+      toastEl.setAttribute('aria-live', 'assertive');
+      toastEl.setAttribute('aria-atomic', 'true');
+
+      toastEl.innerHTML = `
           <div class="d-flex">
             <div class="toast-body">
               <strong>${title}:</strong> ${message}
@@ -1428,112 +1472,112 @@
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
           </div>
         `;
-        
-        toastContainer.appendChild(toastEl);
-        
-        // Initialize and show the toast
-        const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 });
-        toast.show();
-        
-        // Remove the toast after it's hidden
-        toastEl.addEventListener('hidden.bs.toast', function() {
-          toastEl.remove();
-        });
-      }
-      
-      // Add event listeners to all game note buttons
-      document.querySelectorAll('.game-note-btn').forEach(button => {
-        console.log('Setting up note button for game:', button.getAttribute('data-game-name'));
-        button.addEventListener('click', function(event) {
-          console.log('Note button clicked for game:', this.getAttribute('data-game-name'));
-          event.preventDefault(); // Prevent any default action
-          
-          const appid = this.getAttribute('data-appid');
-          const gameName = this.getAttribute('data-game-name');
-          
-          // Log the modal element to make sure it exists
-          console.log('Modal element:', document.getElementById('gameNoteModal'));
-          
-          // Update modal title and app ID
-          modalTitle.textContent = `Notes for ${gameName}`;
-          appIdInput.value = appid;
-          
-          // Clear the textarea
-          noteTextarea.value = '';
-          
-          // Reset the preview
-          showPreviewCheckbox.checked = false;
-          previewContainer.style.display = 'none';
-          
-          // Show loading state
-          noteTextarea.disabled = true;
-          noteTextarea.placeholder = 'Loading your notes...';
-          
-          // Load existing note if any
-          fetch(`/api/game_note/${appid}`)
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                noteTextarea.value = data.note;
-                // Show the delete button only if there's an existing note
-                deleteBtn.style.display = data.note ? 'block' : 'none';
-              } else {
-                console.error('Error loading note:', data.message);
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-            })
-            .finally(() => {
-              // Reset loading state
-              noteTextarea.disabled = false;
-              noteTextarea.placeholder = 'Add your notes about this game here...';
-            });
-          
-          // Show the modal
-          console.log('About to show modal');
-          try {
-            modal.show();
-            console.log('Modal show() method called successfully');
-          } catch (e) {
-            console.error('Error showing modal:', e);
-            
-            // Fallback method
-            try {
-              const modalElement = document.getElementById('gameNoteModal');
-              if (modalElement) {
-                console.log('Trying fallback: direct bootstrap.Modal.getInstance()');
-                const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                if (modalInstance) {
-                  modalInstance.show();
-                  console.log('Fallback successful');
-                } else {
-                  console.log('No existing Modal instance found, creating new one');
-                  const newModal = new bootstrap.Modal(modalElement);
-                  newModal.show();
-                  console.log('New modal instance created and shown');
-                }
-              } else {
-                console.error('Modal element not found by ID');
-              }
-            } catch (fallbackError) {
-              console.error('Fallback error:', fallbackError);
-            }
-          }
-        });
+
+      toastContainer.appendChild(toastEl);
+
+      // Initialize and show the toast
+      const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 });
+      toast.show();
+
+      // Remove the toast after it's hidden
+      toastEl.addEventListener('hidden.bs.toast', function () {
+        toastEl.remove();
       });
-      
-      // Show/hide preview when checkbox is clicked
-      showPreviewCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-          // If checked, render markdown preview
-          fetch('/api/render_markdown', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ markdown: noteTextarea.value })
+    }
+
+    // Add event listeners to all game note buttons
+    document.querySelectorAll('.game-note-btn').forEach(button => {
+      console.log('Setting up note button for game:', button.getAttribute('data-game-name'));
+      button.addEventListener('click', function (event) {
+        console.log('Note button clicked for game:', this.getAttribute('data-game-name'));
+        event.preventDefault(); // Prevent any default action
+
+        const appid = this.getAttribute('data-appid');
+        const gameName = this.getAttribute('data-game-name');
+
+        // Log the modal element to make sure it exists
+        console.log('Modal element:', document.getElementById('gameNoteModal'));
+
+        // Update modal title and app ID
+        modalTitle.textContent = `Notes for ${gameName}`;
+        appIdInput.value = appid;
+
+        // Clear the textarea
+        noteTextarea.value = '';
+
+        // Reset the preview
+        showPreviewCheckbox.checked = false;
+        previewContainer.style.display = 'none';
+
+        // Show loading state
+        noteTextarea.disabled = true;
+        noteTextarea.placeholder = 'Loading your notes...';
+
+        // Load existing note if any
+        fetch(`/api/game_note/${appid}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              noteTextarea.value = data.note;
+              // Show the delete button only if there's an existing note
+              deleteBtn.style.display = data.note ? 'block' : 'none';
+            } else {
+              console.error('Error loading note:', data.message);
+            }
           })
+          .catch(error => {
+            console.error('Error:', error);
+          })
+          .finally(() => {
+            // Reset loading state
+            noteTextarea.disabled = false;
+            noteTextarea.placeholder = 'Add your notes about this game here...';
+          });
+
+        // Show the modal
+        console.log('About to show modal');
+        try {
+          modal.show();
+          console.log('Modal show() method called successfully');
+        } catch (e) {
+          console.error('Error showing modal:', e);
+
+          // Fallback method
+          try {
+            const modalElement = document.getElementById('gameNoteModal');
+            if (modalElement) {
+              console.log('Trying fallback: direct bootstrap.Modal.getInstance()');
+              const modalInstance = bootstrap.Modal.getInstance(modalElement);
+              if (modalInstance) {
+                modalInstance.show();
+                console.log('Fallback successful');
+              } else {
+                console.log('No existing Modal instance found, creating new one');
+                const newModal = new bootstrap.Modal(modalElement);
+                newModal.show();
+                console.log('New modal instance created and shown');
+              }
+            } else {
+              console.error('Modal element not found by ID');
+            }
+          } catch (fallbackError) {
+            console.error('Fallback error:', fallbackError);
+          }
+        }
+      });
+    });
+
+    // Show/hide preview when checkbox is clicked
+    showPreviewCheckbox.addEventListener('change', function () {
+      if (this.checked) {
+        // If checked, render markdown preview
+        fetch('/api/render_markdown', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ markdown: noteTextarea.value })
+        })
           .then(response => response.json())
           .then(data => {
             if (data.success) {
@@ -1544,44 +1588,44 @@
           .catch(error => {
             console.error('Error rendering preview:', error);
           });
-        } else {
-          // If unchecked, hide preview
-          previewContainer.style.display = 'none';
-        }
-      });
-      
-      // Save button click handler
-      saveBtn.addEventListener('click', function() {
-        const appid = appIdInput.value;
-        const note = noteTextarea.value.trim();
-        
-        // Show saving state
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
-        
-        // Save the note
-        fetch(`/api/game_note/${appid}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ note: note })
-        })
+      } else {
+        // If unchecked, hide preview
+        previewContainer.style.display = 'none';
+      }
+    });
+
+    // Save button click handler
+    saveBtn.addEventListener('click', function () {
+      const appid = appIdInput.value;
+      const note = noteTextarea.value.trim();
+
+      // Show saving state
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+      // Save the note
+      fetch(`/api/game_note/${appid}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ note: note })
+      })
         .then(response => response.json())
         .then(data => {
           if (data.success) {
             // Close the modal
             modal.hide();
-            
+
             // Show toast notification
             showToast('Success', 'Note saved successfully', 'success');
-            
+
             // Show or hide the collapse button based on whether there's a note
             const collapseBtn = document.querySelector(`.collapse-note-btn[href="#gameNote-${appid}"]`);
             if (collapseBtn) {
               if (note) {
                 collapseBtn.classList.remove('d-none');
-                
+
                 // Update the note content if it's on the page
                 const noteContent = document.querySelector(`#gameNote-${appid} .game-note-content`);
                 if (noteContent) {
@@ -1604,36 +1648,36 @@
           saveBtn.disabled = false;
           saveBtn.innerHTML = 'Save Note';
         });
-      });
-      
-      // Delete button functionality
-      deleteBtn.addEventListener('click', function() {
-        // Show confirmation dialog
-        if (!confirm('Are you sure you want to delete this note?')) {
-          return;
-        }
-        
-        const appid = appIdInput.value;
-        
-        // Delete the note
-        fetch(`/api/game_note/${appid}`, {
-          method: 'DELETE'
-        })
+    });
+
+    // Delete button functionality
+    deleteBtn.addEventListener('click', function () {
+      // Show confirmation dialog
+      if (!confirm('Are you sure you want to delete this note?')) {
+        return;
+      }
+
+      const appid = appIdInput.value;
+
+      // Delete the note
+      fetch(`/api/game_note/${appid}`, {
+        method: 'DELETE'
+      })
         .then(response => response.json())
         .then(data => {
           if (data.success) {
             // Close the modal
             modal.hide();
-            
+
             // Show success message
             showToast('Success', 'Note deleted successfully', 'success');
-            
+
             // Hide the collapse button for this game
             const collapseBtn = document.querySelector(`.collapse-note-btn[href="#gameNote-${appid}"]`);
             if (collapseBtn) {
               collapseBtn.classList.add('d-none');
             }
-            
+
             // Clear any displayed note content
             const noteContent = document.querySelector(`#gameNote-${appid} .game-note-content`);
             if (noteContent) {
@@ -1648,28 +1692,28 @@
           console.error('Error:', error);
           showToast('Error', 'An unexpected error occurred', 'danger');
         });
-      });
-      
-      // Load notes for all games on page load
-      document.querySelectorAll('.game-note-btn').forEach(button => {
-        const appid = button.getAttribute('data-appid');
-        
-        fetch(`/api/game_note/${appid}`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.success && data.note) {
-              // If there's a note, show the collapse button
-              const collapseBtn = document.querySelector(`.collapse-note-btn[href="#gameNote-${appid}"]`);
-              const noteContent = document.querySelector(`#gameNote-${appid} .game-note-content`);
-              
-              // Render the note
-              fetch('/api/render_markdown', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ markdown: data.note })
-              })
+    });
+
+    // Load notes for all games on page load
+    document.querySelectorAll('.game-note-btn').forEach(button => {
+      const appid = button.getAttribute('data-appid');
+
+      fetch(`/api/game_note/${appid}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.note) {
+            // If there's a note, show the collapse button
+            const collapseBtn = document.querySelector(`.collapse-note-btn[href="#gameNote-${appid}"]`);
+            const noteContent = document.querySelector(`#gameNote-${appid} .game-note-content`);
+
+            // Render the note
+            fetch('/api/render_markdown', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ markdown: data.note })
+            })
               .then(response => response.json())
               .then(renderData => {
                 if (renderData.success) {
@@ -1677,60 +1721,60 @@
                   noteContent.innerHTML = renderData.html;
                 }
               });
-            }
-          })
-          .catch(error => {
-            console.error(`Error loading note for game ${appid}:`, error);
-          });
-      });
-      
-      // Initialize the game list modals
-      document.querySelectorAll('[data-bs-target^="#saveGameModal-"]').forEach(button => {
-        const modalId = button.getAttribute('data-bs-target');
-        const modal = document.querySelector(modalId);
-        const appid = modalId.replace('#saveGameModal-', '');
-        
-        if (modal) {
-          // Add event listeners for both show.bs.modal (beginning of opening) and shown.bs.modal (fully opened)
-          // This ensures we don't miss the event and improves reliability
-          
-          // When modal begins to open
-          modal.addEventListener('show.bs.modal', function() {
-            console.log(`Modal ${modalId} is starting to open - loading lists for appid ${appid}`);
-            loadUserLists(appid);
-          });
-        }
-      });
-      
-      // Function to load user lists for a game
-      function loadUserLists(appid) {
-        // Get the lists container
-        const listsContainer = document.getElementById(`existingLists-${appid}`);
-        
-        // Show loading state
-        listsContainer.innerHTML = '<p class="loading-lists">Loading your lists...</p>';
-        
-        // Fetch user lists from the API
-        fetch(`/api/game_lists/${appid}`)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('Failed to load lists');
-            }
-            return response.json();
-          })
-          .then(lists => {
-            console.log(`Loaded ${lists.length} lists for appid ${appid}`);
-            
-            // Build HTML for lists
-            let html = '<h6>Select Lists:</h6>';
-            
-            if (lists.length === 0) {
-              html += '<p>You don\'t have any lists yet. Create one below.</p>';
-            } else {
-              html += '<div class="list-group mb-3">';
-              
-              lists.forEach(list => {
-                html += `
+          }
+        })
+        .catch(error => {
+          console.error(`Error loading note for game ${appid}:`, error);
+        });
+    });
+
+    // Initialize the game list modals
+    document.querySelectorAll('[data-bs-target^="#saveGameModal-"]').forEach(button => {
+      const modalId = button.getAttribute('data-bs-target');
+      const modal = document.querySelector(modalId);
+      const appid = modalId.replace('#saveGameModal-', '');
+
+      if (modal) {
+        // Add event listeners for both show.bs.modal (beginning of opening) and shown.bs.modal (fully opened)
+        // This ensures we don't miss the event and improves reliability
+
+        // When modal begins to open
+        modal.addEventListener('show.bs.modal', function () {
+          console.log(`Modal ${modalId} is starting to open - loading lists for appid ${appid}`);
+          loadUserLists(appid);
+        });
+      }
+    });
+
+    // Function to load user lists for a game
+    function loadUserLists(appid) {
+      // Get the lists container
+      const listsContainer = document.getElementById(`existingLists-${appid}`);
+
+      // Show loading state
+      listsContainer.innerHTML = '<p class="loading-lists">Loading your lists...</p>';
+
+      // Fetch user lists from the API
+      fetch(`/api/game_lists/${appid}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to load lists');
+          }
+          return response.json();
+        })
+        .then(lists => {
+          console.log(`Loaded ${lists.length} lists for appid ${appid}`);
+
+          // Build HTML for lists
+          let html = '<h6>Select Lists:</h6>';
+
+          if (lists.length === 0) {
+            html += '<p>You don\'t have any lists yet. Create one below.</p>';
+          } else {
+            html += '<div class="list-group mb-3">';
+
+            lists.forEach(list => {
+              html += `
                 <div class="form-check mb-2">
                   <input class="form-check-input" type="checkbox" 
                          id="list-${appid}-${list.id}" 
@@ -1742,85 +1786,85 @@
                     ${list.name} ${list.has_game ? '<small class="text-muted">(already added)</small>' : ''}
                   </label>
                 </div>`;
-              });
-              
-              html += '</div>';
-            }
-            
-            // Update the lists container
-            listsContainer.innerHTML = html;
-          })
-          .catch(error => {
-            console.error(`Error loading lists for appid ${appid}:`, error);
-            listsContainer.innerHTML = `<p class="text-danger">Error loading lists: ${error.message}</p>`;
-          });
-      }
-      
-      // Load user lists when a Save Game modal is opened (keep as backup)
-      document.addEventListener('shown.bs.modal', function(event) {
-        const modal = event.target;
-        
-        // Check if this is a save game modal
-        if (modal.id && modal.id.startsWith('saveGameModal-')) {
-          console.log('Save game modal opened:', modal.id);
-          
-          // Extract the app ID from the modal ID
-          const appid = modal.id.replace('saveGameModal-', '');
-          
-          // Check if lists are already loading/loaded
-          const listsContainer = document.getElementById(`existingLists-${appid}`);
-          const isLoading = listsContainer.querySelector('.loading-lists');
-          
-          // If we still see the loading indicator, load lists now
-          if (isLoading) {
-            loadUserLists(appid);
+            });
+
+            html += '</div>';
           }
+
+          // Update the lists container
+          listsContainer.innerHTML = html;
+        })
+        .catch(error => {
+          console.error(`Error loading lists for appid ${appid}:`, error);
+          listsContainer.innerHTML = `<p class="text-danger">Error loading lists: ${error.message}</p>`;
+        });
+    }
+
+    // Load user lists when a Save Game modal is opened (keep as backup)
+    document.addEventListener('shown.bs.modal', function (event) {
+      const modal = event.target;
+
+      // Check if this is a save game modal
+      if (modal.id && modal.id.startsWith('saveGameModal-')) {
+        console.log('Save game modal opened:', modal.id);
+
+        // Extract the app ID from the modal ID
+        const appid = modal.id.replace('saveGameModal-', '');
+
+        // Check if lists are already loading/loaded
+        const listsContainer = document.getElementById(`existingLists-${appid}`);
+        const isLoading = listsContainer.querySelector('.loading-lists');
+
+        // If we still see the loading indicator, load lists now
+        if (isLoading) {
+          loadUserLists(appid);
         }
-      });
-      
-      // Handle Create List button click
-      document.addEventListener('click', function(event) {
-        if (event.target.id && event.target.id.startsWith('createListBtn-')) {
-          console.log('Create list button clicked:', event.target.id);
-          
-          // Extract the app ID from the button ID
-          const appid = event.target.id.replace('createListBtn-', '');
-          
-          // Get the input field
-          const nameInput = document.getElementById(`newListName-${appid}`);
-          const name = nameInput.value.trim();
-          
-          if (!name) {
-            showToast('Error', 'Please enter a list name', 'danger');
-            return;
-          }
-          
-          // Create the list
-          fetch('/create_list', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ name: name })
-          })
+      }
+    });
+
+    // Handle Create List button click
+    document.addEventListener('click', function (event) {
+      if (event.target.id && event.target.id.startsWith('createListBtn-')) {
+        console.log('Create list button clicked:', event.target.id);
+
+        // Extract the app ID from the button ID
+        const appid = event.target.id.replace('createListBtn-', '');
+
+        // Get the input field
+        const nameInput = document.getElementById(`newListName-${appid}`);
+        const name = nameInput.value.trim();
+
+        if (!name) {
+          showToast('Error', 'Please enter a list name', 'danger');
+          return;
+        }
+
+        // Create the list
+        fetch('/create_list', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name: name })
+        })
           .then(response => response.json())
           .then(data => {
             if (data.success) {
               // Show success message
               showToast('Success', 'List created successfully', 'success');
-              
+
               // Clear the input
               nameInput.value = '';
-              
+
               // Add the new list to the existing lists
               const listsContainer = document.getElementById(`existingLists-${appid}`);
-              
+
               // If there was a "no lists" message, remove it
               const noListsMessage = listsContainer.querySelector('p:not(.loading-lists)');
               if (noListsMessage && noListsMessage.textContent.includes("don't have any lists")) {
                 noListsMessage.remove();
               }
-              
+
               // Check if we need to create the list-group container
               let listGroup = listsContainer.querySelector('.list-group');
               if (!listGroup) {
@@ -1828,7 +1872,7 @@
                 listGroup.className = 'list-group mb-3';
                 listsContainer.appendChild(listGroup);
               }
-              
+
               // Add the new list item
               const newListItem = document.createElement('div');
               newListItem.className = 'form-check mb-2';
@@ -1843,7 +1887,7 @@
                   ${name}
                 </label>
               `;
-              
+
               listGroup.appendChild(newListItem);
             } else {
               showToast('Error', data.message || 'Failed to create list', 'danger');
@@ -1853,46 +1897,46 @@
             console.error('Error creating list:', error);
             showToast('Error', 'An unexpected error occurred', 'danger');
           });
+      }
+    });
+
+    // Handle Save to Selected Lists button click
+    document.addEventListener('click', function (event) {
+      if (event.target.classList.contains('save-game-btn')) {
+        console.log('Save to Selected Lists button clicked');
+
+        // Get the app ID
+        const appid = event.target.getAttribute('data-appid');
+
+        // Get the selected lists
+        const checkboxes = document.querySelectorAll(`#saveGameModal-${appid} input[name="list_ids"]:checked`);
+        const listIds = Array.from(checkboxes).map(cb => cb.value);
+
+        // Get already added game lists (disabled checkboxes) that we want to include automatically
+        const alreadyAddedCheckboxes = document.querySelectorAll(`#saveGameModal-${appid} input[name="list_ids"][data-already-added="true"]`);
+        const alreadyAddedListIds = Array.from(alreadyAddedCheckboxes).map(cb => cb.value);
+
+        // Combine the lists, ensuring no duplicates
+        const allListIds = [...new Set([...listIds, ...alreadyAddedListIds])];
+
+        if (allListIds.length === 0) {
+          showToast('Warning', 'Please select at least one list', 'warning');
+          return;
         }
-      });
-      
-      // Handle Save to Selected Lists button click
-      document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('save-game-btn')) {
-          console.log('Save to Selected Lists button clicked');
-          
-          // Get the app ID
-          const appid = event.target.getAttribute('data-appid');
-          
-          // Get the selected lists
-          const checkboxes = document.querySelectorAll(`#saveGameModal-${appid} input[name="list_ids"]:checked`);
-          const listIds = Array.from(checkboxes).map(cb => cb.value);
-          
-          // Get already added game lists (disabled checkboxes) that we want to include automatically
-          const alreadyAddedCheckboxes = document.querySelectorAll(`#saveGameModal-${appid} input[name="list_ids"][data-already-added="true"]`);
-          const alreadyAddedListIds = Array.from(alreadyAddedCheckboxes).map(cb => cb.value);
-          
-          // Combine the lists, ensuring no duplicates
-          const allListIds = [...new Set([...listIds, ...alreadyAddedListIds])];
-          
-          if (allListIds.length === 0) {
-            showToast('Warning', 'Please select at least one list', 'warning');
-            return;
-          }
-          
-          // Show saving indicator
-          event.target.disabled = true;
-          event.target.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
-          
-          // Send the request
-          fetch(`/save_game/${appid}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ lists: allListIds })
-          })
+
+        // Show saving indicator
+        event.target.disabled = true;
+        event.target.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+        // Send the request
+        fetch(`/save_game/${appid}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ lists: allListIds })
+        })
           .then(response => {
             if (!response.ok) {
               throw new Error('Network response was not ok');
@@ -1903,13 +1947,13 @@
             // Reset button
             event.target.disabled = false;
             event.target.textContent = 'Save to Selected Lists';
-            
+
             if (data.success) {
               // Close the modal
               const modalEl = document.getElementById(`saveGameModal-${appid}`);
               const bsModal = bootstrap.Modal.getInstance(modalEl);
               bsModal.hide();
-              
+
               // Show success message
               showToast('Success', data.message || 'Game saved to selected lists', 'success');
             } else {
@@ -1920,30 +1964,30 @@
             // Reset button
             event.target.disabled = false;
             event.target.textContent = 'Save to Selected Lists';
-            
+
             console.error('Error saving game to list:', error);
             showToast('Error', 'An unexpected error occurred', 'danger');
           });
-        }
-      });
+      }
     });
-  </script>
-  {% endif %}
+  });
+</script>
+{% endif %}
 
-  <!-- Game Notes JavaScript -->
-  {% if results %}
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Process for saving search results as a list
-      const saveResultsBtn = document.getElementById('saveResultsAsListBtn');
-      
-      if (saveResultsBtn) {
-        saveResultsBtn.addEventListener('click', function() {
-          // Get number of results to save from the dropdown
-          const numResultsToSave = document.getElementById('saveResultsCount').value;
-          
-          // Create and show the save list modal
-          const modalHTML = `
+<!-- Game Notes JavaScript -->
+{% if results %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Process for saving search results as a list
+    const saveResultsBtn = document.getElementById('saveResultsAsListBtn');
+
+    if (saveResultsBtn) {
+      saveResultsBtn.addEventListener('click', function () {
+        // Get number of results to save from the dropdown
+        const numResultsToSave = document.getElementById('saveResultsCount').value;
+
+        // Create and show the save list modal
+        const modalHTML = `
             <div class="modal fade" id="saveListModal" tabindex="-1" aria-labelledby="saveListModalLabel" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
@@ -1974,40 +2018,40 @@
               </div>
             </div>
           `;
-          
-          // Append modal to body if it doesn't exist yet
-          if (!document.getElementById('saveListModal')) {
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-          }
-          
-          // Create and show the modal
-          const modalElement = document.getElementById('saveListModal');
-          const modal = new bootstrap.Modal(modalElement);
-          modal.show();
-          
-          // Handle save button click
-          document.getElementById('confirmSaveList').addEventListener('click', function() {
-            // Show saving state
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
-            
-            // Get form data
-            const formData = new FormData(document.getElementById('saveListForm'));
-            
-            // Send request to save list
-            fetch('/save_search_as_list', {
-              method: 'POST',
-              body: formData
-            })
+
+        // Append modal to body if it doesn't exist yet
+        if (!document.getElementById('saveListModal')) {
+          document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        // Create and show the modal
+        const modalElement = document.getElementById('saveListModal');
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+
+        // Handle save button click
+        document.getElementById('confirmSaveList').addEventListener('click', function () {
+          // Show saving state
+          this.disabled = true;
+          this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+          // Get form data
+          const formData = new FormData(document.getElementById('saveListForm'));
+
+          // Send request to save list
+          fetch('/save_search_as_list', {
+            method: 'POST',
+            body: formData
+          })
             .then(response => response.json())
             .then(data => {
               if (data.success) {
                 // Hide modal
                 modal.hide();
-                
+
                 // Show success message
                 showToast('Success', `List "${data.list_name}" created with ${data.count} games`, 'success');
-                
+
                 // Redirect to the new list after a short delay
                 setTimeout(() => {
                   window.location.href = `/list/${data.list_id}`;
@@ -2024,85 +2068,85 @@
               this.disabled = false;
               this.innerHTML = 'Save List';
             });
-          });
         });
-      }
-      
-      // Cache search results in localStorage for "Back to Search Results" functionality
-      try {
-        console.log("Caching search results in localStorage...");
-        
-        // Create a cache object with query, filters, and results
-        const searchCache = {
-          query: "{{ query }}",
-          timestamp: Date.now(),
-          filters: {
-            genre: "{{ selected_genre }}",
-            release_year: "{{ selected_year }}",
-            platform: "{{ selected_platform }}",
-            price: "{{ selected_price }}",
-            sort_by: "{{ sort_by }}",
-            result_limit: {{ result_limit }},
-            use_ai_enhanced: {% if use_ai_enhanced %}true{% else %}false{% endif %},
-            use_deep_search: {% if use_deep_search %}true{% else %}false{% endif %}
-          },
-          cached_results: []
-        };
-        
-        // Store only essential data from each result to save space
-        {% for r in results %}
-        searchCache.cached_results.push({
-          appid: "{{ r.appid }}",
-          name: "{{ r.name|replace("\"", "\\\"")|replace("'", "\\'")|safe }}",
-          media: {{ r.media|tojson }},
-          release_year: "{{ r.release_year }}",
-          price: "{{ r.price }}",
-          is_free: {% if r.is_free %}true{% else %}false{% endif %},
-          pos_percent: {{ r.pos_percent|default(0) }},
-          total_reviews: {{ r.total_reviews|default(0) }},
-          genres: {{ r.genres|tojson }}
-        });
-        {% endfor %}
-        
-        // Store in localStorage
-        localStorage.setItem('steamseek_last_search', JSON.stringify(searchCache));
-        console.log(`Cached ${searchCache.cached_results.length} results for query "${searchCache.query}"`);
-        
-        // Enable "Back to Search Results" button in sidebar
-        const backBtn = document.getElementById('backToSearchBtn');
-        if (backBtn) {
-          backBtn.classList.remove('d-none');
-        }
-      } catch (error) {
-        console.error("Error caching search results:", error);
-      }
-    });
-  </script>
-  {% endif %}
+      });
+    }
 
-  <!-- Game Notes JavaScript -->
-  {% if deep_search_active %}
-  <script>
-    // Save the deep search query in localStorage to allow restoration if user navigates away
-    document.addEventListener('DOMContentLoaded', function() {
-      try {
-        localStorage.setItem('steamseek_pending_deep_search', JSON.stringify({
-          query: '{{ query }}',
-          timestamp: Date.now(),
-          filters: {
-            genre: '{{ selected_genre }}',
-            release_year: '{{ selected_year }}',
-            platform: '{{ selected_platform }}',
-            price: '{{ selected_price }}',
-            sort_by: '{{ sort_by }}',
-            result_limit: '{{ result_limit }}'
-          }
-        }));
-        console.log('Saved pending deep search info to localStorage');
-      } catch (error) {
-        console.error('Error saving deep search info:', error);
+    // Cache search results in localStorage for "Back to Search Results" functionality
+    try {
+      console.log("Caching search results in localStorage...");
+
+      // Create a cache object with query, filters, and results
+      const searchCache = {
+        query: "{{ query }}",
+        timestamp: Date.now(),
+        filters: {
+          genre: "{{ selected_genre }}",
+          release_year: "{{ selected_year }}",
+          platform: "{{ selected_platform }}",
+          price: "{{ selected_price }}",
+          sort_by: "{{ sort_by }}",
+          result_limit: {{ result_limit }},
+          use_ai_enhanced: {% if use_ai_enhanced %} true{% else %} false{% endif %},
+          use_deep_search: {% if use_deep_search %} true{% else %} false{% endif %}
+        },
+        cached_results: []
+      };
+
+      // Store only essential data from each result to save space
+      {% for r in results %}
+      searchCache.cached_results.push({
+        appid: "{{ r.appid }}",
+        name: "{{ r.name|replace("\"", "\\\"") | replace("'", "\\'") | safe }}",
+        media: { { r.media | tojson } },
+        release_year: "{{ r.release_year }}",
+        price: "{{ r.price }}",
+        is_free: {% if r.is_free %} true{% else %} false{% endif %},
+        pos_percent: { { r.pos_percent |default (0) } },
+        total_reviews: { { r.total_reviews |default (0) } },
+        genres: { { r.genres | tojson } }
+      });
+      {% endfor %}
+
+      // Store in localStorage
+      localStorage.setItem('steamseek_last_search', JSON.stringify(searchCache));
+      console.log(`Cached ${searchCache.cached_results.length} results for query "${searchCache.query}"`);
+
+      // Enable "Back to Search Results" button in sidebar
+      const backBtn = document.getElementById('backToSearchBtn');
+      if (backBtn) {
+        backBtn.classList.remove('d-none');
       }
-    });
-  </script>
-  {% endif %}
+    } catch (error) {
+      console.error("Error caching search results:", error);
+    }
+  });
+</script>
+{% endif %}
+
+<!-- Game Notes JavaScript -->
+{% if deep_search_active %}
+<script>
+  // Save the deep search query in localStorage to allow restoration if user navigates away
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      localStorage.setItem('steamseek_pending_deep_search', JSON.stringify({
+        query: '{{ query }}',
+        timestamp: Date.now(),
+        filters: {
+          genre: '{{ selected_genre }}',
+          release_year: '{{ selected_year }}',
+          platform: '{{ selected_platform }}',
+          price: '{{ selected_price }}',
+          sort_by: '{{ sort_by }}',
+          result_limit: '{{ result_limit }}'
+        }
+      }));
+      console.log('Saved pending deep search info to localStorage');
+    } catch (error) {
+      console.error('Error saving deep search info:', error);
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}

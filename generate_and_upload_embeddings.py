@@ -4,6 +4,7 @@ Generate embeddings for games and upload to Pinecone
 Handles rate limiting and errors gracefully
 """
 
+import argparse
 import json
 import os
 import time
@@ -18,7 +19,6 @@ load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 INDEX_NAME = "game-knowledge"
-GAMES_FILE = "data/steam_games_data_second.jsonl"
 BATCH_SIZE = 10  # Process 10 games at a time
 DELAY_BETWEEN_BATCHES = 2  # Wait 2 seconds between batches to avoid rate limits
 
@@ -60,14 +60,43 @@ def create_embedding_text(game):
     return " ".join(parts)
 
 def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description='Generate embeddings for games and upload to Pinecone',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        'input_file',
+        help='Path to the JSONL file containing game data (e.g., data/steam_games_data.jsonl)'
+    )
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=BATCH_SIZE,
+        help=f'Number of games to process in each batch (default: {BATCH_SIZE})'
+    )
+    parser.add_argument(
+        '--delay',
+        type=int,
+        default=DELAY_BETWEEN_BATCHES,
+        help=f'Seconds to wait between batches (default: {DELAY_BETWEEN_BATCHES})'
+    )
+
+    args = parser.parse_args()
+    games_file = args.input_file
+    batch_size = args.batch_size
+    delay = args.delay
+
+    print(f"file: {games_file}, bsize: {batch_size}, delay: {delay}")
+
     print("="*60)
     print("Generate and Upload Embeddings to Pinecone")
     print("="*60)
 
     # Load games
-    print(f"\nLoading games from {GAMES_FILE}...")
+    print(f"\nLoading games from {games_file}...")
     games = []
-    with open(GAMES_FILE, 'r', encoding='utf-8') as f:
+    with open(games_file, 'r', encoding='utf-8') as f:
         for line in f:
             try:
                 game = json.loads(line.strip())
@@ -88,10 +117,10 @@ def main():
     total_failed = 0
     total_skipped = 0
 
-    for i in range(0, len(games), BATCH_SIZE):
-        batch = games[i:i+BATCH_SIZE]
-        batch_num = (i // BATCH_SIZE) + 1
-        total_batches = (len(games) + BATCH_SIZE - 1) // BATCH_SIZE
+    for i in range(0, len(games), batch_size):
+        batch = games[i:i+batch_size]
+        batch_num = (i // batch_size) + 1
+        total_batches = (len(games) + batch_size - 1) // batch_size
 
         print(f"\nProcessing batch {batch_num}/{total_batches} ({len(batch)} games)...")
 
@@ -188,9 +217,9 @@ def main():
                 total_processed -= len(vectors_to_upsert)
 
         # Wait between batches to avoid rate limits
-        if i + BATCH_SIZE < len(games):
-            print(f"\n  Waiting {DELAY_BETWEEN_BATCHES} seconds before next batch...")
-            time.sleep(DELAY_BETWEEN_BATCHES)
+        if i + batch_size < len(games):
+            print(f"\n  Waiting {delay} seconds before next batch...")
+            time.sleep(delay)
 
     # Final stats
     print("\n" + "="*60)

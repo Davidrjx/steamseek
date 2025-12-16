@@ -216,7 +216,7 @@ class GameChatbot:
         """Initialize chatbot with knowledge base and OpenAI client for chat completions."""
         self.kb = knowledge_base
         logging.info("Initializing GameChatbot")
-        self.chat_model = "gpt-4o-mini"  # Ensure this model is supported or change accordingly.
+        # self.chat_model = "gpt-4o-mini"  # Ensure this model is supported or change accordingly.
         # Instantiate the new OpenAI client
         import httpx
 
@@ -281,7 +281,7 @@ class GameChatbot:
             else:
                 # Use OpenAI directly
                 logging.debug("Using OpenAI directly for embeddings")
-                response = openai.embeddings.create(
+                response = self.openai_client.embeddings.create(
                     model="text-embedding-3-large",
                     input=text,
                     encoding_format="float"
@@ -326,41 +326,41 @@ class GameChatbot:
             traceback.print_exc()
             raise
 
-    def chat(self, user_message: str) -> str:
-        """Generate a response using the chatbot."""
-        logging.info("Chat initiated with user message: '%s'", user_message)
-        system_message = (
-            "You are a knowledgeable gaming assistant. When users ask about games, you should:\n"
-            "1. Analyze their question to understand what information you need\n"
-            "2. Use the search results from the game database to provide accurate information\n"
-            "3. Cite specific games when providing examples or recommendations\n"
-            "4. Reference specific features, mechanics, and content from the game summaries\n"
-            "Remember to be helpful and informative, and always base your responses on the actual game data provided."
-        )
+    # def chat(self, user_message: str) -> str:
+    #     """Generate a response using the chatbot."""
+    #     print("Chat initiated with user message: '%s'", user_message)
+    #     system_message = (
+    #         "You are a knowledgeable gaming assistant. When users ask about games, you should:\n"
+    #         "1. Analyze their question to understand what information you need\n"
+    #         "2. Use the search results from the game database to provide accurate information\n"
+    #         "3. Cite specific games when providing examples or recommendations\n"
+    #         "4. Reference specific features, mechanics, and content from the game summaries\n"
+    #         "Remember to be helpful and informative, and always base your responses on the actual game data provided."
+    #     )
 
-        try:
-            relevant_games = self.search_games(user_message)
-            context = "Here are some relevant games from our database:\n\n"
-            for game in relevant_games:
-                context += f"Game: {game.metadata['name']} (ID: {game.metadata['appid']})\n"
-                context += f"Summary: {game.metadata.get('ai_summary', 'No summary available')}\n\n"
-                context += "---\n\n"  # Separator between games for clarity
+    #     try:
+    #         relevant_games = self.search_games(user_message)
+    #         context = "Here are some relevant games from our database:\n\n"
+    #         for game in relevant_games:
+    #             context += f"Game: {game.metadata['name']} (ID: {game.metadata['appid']})\n"
+    #             context += f"Summary: {game.metadata.get('ai_summary', 'No summary available')}\n\n"
+    #             context += "---\n\n"  # Separator between games for clarity
 
-            logging.debug("Context for chatbot: %s", context)
+    #         logging.debug("Context for chatbot: %s", context)
             
-            response = self.openai_client.chat.completions.create(
-                model=self.chat_model,
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": f"Context:\n{context}\n\nUser question: {user_message}"}
-                ]
-            )
-            chatbot_response = response.choices[0].message.content
-            logging.info("Chatbot response received")
-            return chatbot_response
-        except Exception as e:
-            logging.error("Error in chat processing: %s", e)
-            raise
+    #         response = self.openai_client.chat.completions.create(
+    #             model=self.chat_model,
+    #             messages=[
+    #                 {"role": "system", "content": system_message},
+    #                 {"role": "user", "content": f"Context:\n{context}\n\nUser question: {user_message}"}
+    #             ]
+    #         )
+    #         chatbot_response = response.choices[0].message.content
+    #         logging.info("Chatbot response received")
+    #         return chatbot_response
+    #     except Exception as e:
+    #         logging.error("Error in chat processing: %s", e)
+    #         raise
 
 def chat_loop(chatbot):
     """

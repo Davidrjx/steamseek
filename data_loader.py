@@ -2,6 +2,15 @@ import os
 import json
 import pickle
 import logging
+import sys
+
+# Configure logging to output to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 # Cache file for the index map
 INDEX_CACHE_FILE = "data/index_map.pkl"
@@ -82,7 +91,7 @@ def get_game_data_by_appid(appid: int, file_path: str, index_map: dict) -> dict:
     """Random-access lookup of game data from the large JSONL file using the pre-built index."""
     offset = index_map.get(appid)
     if offset is None:
-        logging.info(f"AppID {appid} not found in index map.")
+        logger.warning(f"AppID {appid} not found in index map (total entries: {len(index_map)})")
         return None
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -90,5 +99,5 @@ def get_game_data_by_appid(appid: int, file_path: str, index_map: dict) -> dict:
             line = f.readline()
             return json.loads(line)
     except Exception as e:
-        logging.error(f"Failed to load game data for appid {appid}: {e}")
+        logger.error(f"Failed to load game data for appid {appid}: {e}")
         return None
