@@ -5,6 +5,9 @@ python archive/fetch_game_resume.py --limit 50000 --sleep 0.5 --output steam_gam
 # (recommended) 单线程 with failed app saved as 429 rate limit for later retry
 python archive/fetch_game_resume.py --limit 50000 --sleep 0.5 --output steam_games_data_third.jsonl --checkpoint processed_ids.txt --failed-appids failed_appids.txt --max-results 1000
 
+# fetch a certain game app, like 322330
+python archive/fetch_game_resume_bak.py --appid 322330 --no-filter --output data/steam_games_data_tmp.jsonl
+
 # 多线程, not recommended as too many requests limit by steam community API KEY. mayby succeed by steam publisher API KEY
 python archive/fetch_game_resume_multi_thread.py --limit 50000 --sleep 0.5 --output steam_games_data_test.jsonl --checkpoint processed_ids_test.txt --batch-size 10000 --workers 5
 

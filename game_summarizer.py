@@ -33,24 +33,26 @@ class GameSummarizer:
                  output_file: str,
                  state_file: str,
                  openrouter_key: Optional[str] = None,
-                 model: str = "mistralai/mistral-nemo"):
+                 model: str = None):
         # Save file paths and settings to instance variables
         self.input_file = input_file
         self.output_file = output_file
         self.state_file = state_file
-        self.model = model
+        self.model = model if model else "mistralai/mistral-nemo"
 
         # Load environment variables
         load_dotenv()
         
         # Get API key with fallback to environment variable
-        api_key = openrouter_key or os.getenv('OPENROUTER_API_KEY')
+        # api_key = openrouter_key or os.getenv('OPENROUTER_API_KEY')
+        api_key = os.getenv('AIGC_API_KEY') if os.getenv('AIGC_API_KEY') else os.getenv('OPENROUTER_API_KEY')
+        api_base_url = os.getenv('AIGC_OPENAI_BASE_URL') if os.getenv('AIGC_OPENAI_BASE_URL') else os.getenv('OPENROUTER_BASE_URL')
         if not api_key:
-            raise ValueError("OpenRouter API key must be provided either via --api-key argument or OPENROUTER_API_KEY environment variable")
+            raise ValueError("Fuxi AIGC or OpenAI API key and conresponding base url must be provided")
             
         # Initialize OpenAI client with OpenRouter base URL
         self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
+            base_url = api_base_url,
             api_key=api_key
         )
         
@@ -156,7 +158,7 @@ Top Player Reviews:
             sentiment = "Positive" if is_positive else "Negative"
             prompt += f"\nReview {i} ({sentiment}):\n{review_text}\n"
             
-        prompt += "\nSummary:"
+        prompt += "\n请生成中文Summary:"
         return prompt
 
     async def _generate_summary(self, game_data: Dict) -> Optional[str]:
@@ -326,7 +328,6 @@ async def main():
     parser.add_argument("--api-key", required=False,
                         help="OpenRouter API key")
     parser.add_argument("--model",
-                        default="mistralai/mistral-nemo",
                         help="Model identifier to use")
     parser.add_argument("--appid",
                         type=int,

@@ -4,21 +4,46 @@ import requests
 from dotenv import load_dotenv
 import logging # Add logging import if not already present
 from typing import List, Dict, Any, Tuple, Optional # For type hinting
+from urllib.parse import urljoin # For URL joining
 
 load_dotenv()
-
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL")
+AIGC_BASE_URL = os.getenv("AIGC_BASE_URL")
 # Get the OpenRouter API key from .env file
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+AIGC_API_KEY = os.getenv("AIGC_API_KEY")
+OPENROUTER_API_KEY = AIGC_API_KEY if AIGC_API_KEY else OPENROUTER_API_KEY
 if not OPENROUTER_API_KEY:
-    raise ValueError("OPENROUTER_API_KEY not set in .env file.")
+    raise ValueError("Neither OPENROUTER_API_KEY nor AIGC_API_KEY not set in .env file.")
+
 
 # OpenRouter API endpoint and model identifier
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "google/gemini-2.0-flash-001"
+# OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_URL = urljoin(AIGC_BASE_URL, "chat/completions") if AIGC_BASE_URL else urljoin(OPENROUTER_BASE_URL, "chat/completions")
+MODEL = os.getenv("AIGC_OPENROUTER_MODEL", "google/gemini-2.0-flash-001")
 
 # Configure logger for this module if needed, or rely on Flask's app.logger
 logger = logging.getLogger(__name__)
 
+def clean_llm_json_response(content: str) -> str:
+      """
+      clean LLM  JSON str response，remove Markdown block mark
+      Args:
+          content: LLM raw str
+      Returns:
+          cleaned JSON str
+      """
+      content = content.strip()
+
+      # remove front ```json or ```
+      if content.startswith("```json"):
+          content = content[7:]
+      elif content.startswith("```"):
+          content = content[3:]
+      # remove tail ```
+      if content.endswith("```"):
+          content = content[:-3]
+      return content.strip()
 
 def _prepare_llm_prompt(game_data: dict) -> str:
     """
@@ -214,20 +239,10 @@ def generate_game_analysis(game_data: dict) -> dict:
 
             print(f"LLM returned content (first 200 chars): {content[:200]}")
 
-            # Strip markdown code blocks if present
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]  # Remove ```json
-            elif content.startswith("```"):
-                content = content[3:]  # Remove ```
-
-            if content.endswith("```"):
-                content = content[:-3]  # Remove trailing ```
-
-            content = content.strip()
-
             # Attempt to parse the content as JSON
             try:
+                 # Strip markdown code blocks if present
+                content = clean_llm_json_response(content)
                 analysis = json.loads(content)
                 return analysis
             except json.JSONDecodeError as je:
@@ -519,6 +534,8 @@ Return only the JSON with optimized search keywords and a brief explanation.
         result = response.json()
         content = result["choices"][0]["message"]["content"]
         
+        # remove markdown code blocks if present
+        content = clean_llm_json_response(content)
         # Parse the response
         analysis = json.loads(content)
         optimized_keywords = analysis.get("optimized_keywords", original_query)

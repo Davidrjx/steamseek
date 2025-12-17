@@ -10,12 +10,18 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 # Configure logging
-logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 # Load environment variables
 load_dotenv()
+AGIC_BASE_URL = os.getenv("AIGC_BASE_URL")
+# OpenAI embedding interface Does NOT exist in FUXI AIGC 
+AIGC_OPENAI_BASE_URL = None  
+AIGC_API_KEY = os.getenv("AIGC_API_KEY")
+TEXT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Use OpenAI's official API key
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")  # Use OpenRouter as fallback
 
 # Configure file paths
@@ -232,9 +238,11 @@ class GameChatbot:
                 "https://": httpx.HTTPTransport(proxy=https_proxy or http_proxy) if (https_proxy or http_proxy) else httpx.HTTPTransport(),
             }
             http_client = httpx.Client(mounts=proxy_mounts, timeout=60.0)
-            self.openai_client = openai.OpenAI(http_client=http_client)
+            self.openai_client = openai.OpenAI(base_url=AIGC_OPENAI_BASE_URL if AIGC_OPENAI_BASE_URL else None, 
+                                               http_client=http_client, timeout=60)
         else:
-            self.openai_client = openai.OpenAI(timeout=60.0)
+            # logging.INFO("######  AIGC BASE_URL: %s", AGIC_BASE_URL)
+            self.openai_client = openai.OpenAI(base_url=AIGC_OPENAI_BASE_URL if AIGC_OPENAI_BASE_URL else None, timeout=15.0)
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
     def get_embedding(self, text: str) -> List[float]:
@@ -244,14 +252,15 @@ class GameChatbot:
             if USE_OPENROUTER:
                 # Use OpenRouter API (supports global access)
                 logging.debug("Using OpenRouter for embeddings")
+                
                 response = requests.post(
-                    "https://openrouter.ai/api/v1/embeddings",
+                    OPENROUTER_BASE_URL+"/embeddings" if OPENROUTER_BASE_URL else AGIC_BASE_URL+"/embeddings",
                     headers={
-                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY if OPENROUTER_API_KEY else AIGC_API_KEY}",
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "openai/text-embedding-3-large",
+                        "model": TEXT_EMBEDDING_MODEL,
                         "input": text
                     }
                 )
@@ -282,7 +291,7 @@ class GameChatbot:
                 # Use OpenAI directly
                 logging.debug("Using OpenAI directly for embeddings")
                 response = self.openai_client.embeddings.create(
-                    model="text-embedding-3-large",
+                    model=TEXT_EMBEDDING_MODEL,
                     input=text,
                     encoding_format="float"
                 )
